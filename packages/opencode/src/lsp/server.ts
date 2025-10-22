@@ -116,6 +116,52 @@ export namespace LSPServer {
     },
   }
 
+  const findEslintConfig = async (root: string): Promise<string | undefined> => {
+    const configFiles = [
+      "eslint.config.ts",
+      "eslint.config.js", 
+      "eslint.config.mjs",
+      "eslint.config.cjs",
+      ".eslintrc.js",
+      ".eslintrc.cjs",
+      ".eslintrc.yaml",
+      ".eslintrc.yml",
+      ".eslintrc.json",
+      ".eslintrc"
+    ]
+    
+    for (const file of configFiles) {
+      const configPath = path.join(root, file)
+      if (await Bun.file(configPath).exists()) {
+        return configPath
+      }
+    }
+    return undefined
+  }
+
+  const findEslintConfig = async (root: string): Promise<string | undefined> => {
+    const configFiles = [
+      "eslint.config.ts",
+      "eslint.config.js", 
+      "eslint.config.mjs",
+      "eslint.config.cjs",
+      ".eslintrc.js",
+      ".eslintrc.cjs",
+      ".eslintrc.yaml",
+      ".eslintrc.yml",
+      ".eslintrc.json",
+      ".eslintrc"
+    ]
+    
+    for (const file of configFiles) {
+      const configPath = path.join(root, file)
+      if (await Bun.file(configPath).exists()) {
+        return configPath
+      }
+    }
+    return undefined
+  }
+
   export const ESLint: Info = {
     id: "eslint",
     root: NearestRoot(["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"]),
@@ -123,6 +169,7 @@ export namespace LSPServer {
     async spawn(root) {
       const eslint = await Bun.resolve("eslint", Instance.directory).catch(() => {})
       if (!eslint) return
+      
       log.info("spawning eslint server")
       const serverPath = path.join(Global.Path.bin, "vscode-eslint", "server", "out", "eslintServer.js")
       if (!(await Bun.file(serverPath).exists())) {
@@ -153,16 +200,38 @@ export namespace LSPServer {
         log.info("installed VS Code ESLint server", { serverPath })
       }
 
+      const eslintConfig = await findEslintConfig(root)
+      if (eslintConfig) {
+        log.info("found eslint config", { config: eslintConfig })
+      } else {
+        log.info("no eslint config found, using defaults")
+      }
+      
+      const isFlatConfig = eslintConfig && (eslintConfig.includes("eslint.config.") || eslintConfig.endsWith(".mjs") || eslintConfig.endsWith(".cjs"))
+      
       const proc = spawn(BunProc.which(), ["--max-old-space-size=8192", serverPath, "--stdio"], {
         cwd: root,
         env: {
           ...process.env,
           BUN_BE_BUN: "1",
+          ESLINT_USE_FLAT_CONFIG: isFlatConfig ? "true" : "false",
         },
       })
 
+      const initialization: any = {}
+      if (eslintConfig) {
+        initialization.settings = {
+          eslint: {
+            options: {
+              configFile: eslintConfig,
+            },
+          },
+        }
+      }
+
       return {
         process: proc,
+        initialization,
       }
     },
   }
