@@ -139,29 +139,6 @@ export namespace LSPServer {
     return undefined
   }
 
-  const findEslintConfig = async (root: string): Promise<string | undefined> => {
-    const configFiles = [
-      "eslint.config.ts",
-      "eslint.config.js", 
-      "eslint.config.mjs",
-      "eslint.config.cjs",
-      ".eslintrc.js",
-      ".eslintrc.cjs",
-      ".eslintrc.yaml",
-      ".eslintrc.yml",
-      ".eslintrc.json",
-      ".eslintrc"
-    ]
-    
-    for (const file of configFiles) {
-      const configPath = path.join(root, file)
-      if (await Bun.file(configPath).exists()) {
-        return configPath
-      }
-    }
-    return undefined
-  }
-
   export const ESLint: Info = {
     id: "eslint",
     root: NearestRoot(["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock"]),
