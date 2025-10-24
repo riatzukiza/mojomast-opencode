@@ -530,14 +530,7 @@ export default function Share(props: { id: string; api: string; info: Session.In
                             <span data-placeholder>&mdash;</span>
                           )}
                         </li>
-                        <li>
-                          <span data-element-label>Conversation Length</span>
-                          {data().context.conversationLength ? (
-                            <span>{data().context.conversationLength.toLocaleString()}</span>
-                          ) : (
-                            <span data-placeholder>&mdash;</span>
-                          )}
-                        </li>
+
                         <li>
                           <span data-element-label>Instruction Tokens</span>
                           {data().context.instructionTokens ? (

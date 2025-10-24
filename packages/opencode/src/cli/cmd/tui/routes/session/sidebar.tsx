@@ -130,7 +130,7 @@ export function Sidebar(props: { sessionID: string }) {
           <text fg={Theme.textMuted}>{context()?.tokens ?? 0} tokens</text>
           <text fg={Theme.textMuted}>{context()?.percentage ?? 0}% used</text>
           <text fg={Theme.textMuted}>Compaction events: {context()?.compactionEvents ?? 0}</text>
-          <text fg={Theme.textMuted}>Conversation length: {context()?.conversationLength ?? 0}</text>
+
           <text fg={Theme.textMuted}>Instruction tokens: {context()?.instructionTokens ?? 0}</text>
           <text fg={Theme.textMuted}>User Tokens: {context()?.totalUserTokens ?? 0}</text>
           <text fg={Theme.textMuted}>Assistant Tokens: {context()?.totalAssistantTokens ?? 0}</text>
