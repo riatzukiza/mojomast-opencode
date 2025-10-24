@@ -1,0 +1,39 @@
+name: Build and package (Bun -> single zip)
+description: Build with Bun and package a single distributable archive
+outputs:
+  archive_path:
+    description: Absolute path to the archive
+    value: ${{ steps.pkg.outputs.archive_path }}
+runs:
+  using: composite
+  steps:
+    - name: Setup Bun
+      uses: ./.github/actions/setup-bun
+
+    - name: Verify Bun
+      shell: bash
+      run: bun --version
+
+    - name: Install dependencies
+      shell: bash
+      run: bun install --frozen-lockfile || bun install
+
+    - name: Build
+      shell: bash
+      run: bun run build
+
+    - name: Ensure zip is available
+      shell: bash
+      run: sudo apt-get update -y && sudo apt-get install -y zip
+
+    - name: Package single file
+      id: pkg
+      shell: bash
+      run: |
+        set -e
+        mkdir -p bundle
+        if [ -d dist ]; then SRC=dist; elif [ -d build ]; then SRC=build; else echo 'No dist/ or build/ after build. Check project build output path.' >&2; exit 1; fi
+        cd "$SRC"
+        zip -r ../bundle/opencode.zip .
+        cd - >/dev/null
+        echo "archive_path=$(pwd)/bundle/opencode.zip" >> "$GITHUB_OUTPUT"
