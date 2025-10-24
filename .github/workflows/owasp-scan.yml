@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+
 jobs:
   depcheck:
     runs-on: ubuntu-latest
@@ -19,6 +20,40 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Detect JS tooling (bun / node)
+        id: meta
+        run: |
+          set -e
+          has_file() { git ls-files -z | tr '\0' '\n' | grep -qE "$1" && echo true || echo false; }
+          echo "has_bun=$(has_file '(^|/)bun\.lockb$')" >> "$GITHUB_OUTPUT"
+          echo "has_node=$(has_file '(^|/)package\.json$')" >> "$GITHUB_OUTPUT"
+          echo "has_pnpm_lock=$(has_file '(^|/)pnpm-lock\.yaml$')" >> "$GITHUB_OUTPUT"
+          echo "has_yarn_lock=$(has_file '(^|/)yarn\.lock$')" >> "$GITHUB_OUTPUT"
+          echo "has_package_lock=$(has_file '(^|/)package-lock\.json$')" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Bun (if bun.lockb present)
+        if: steps.meta.outputs.has_bun == 'true'
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+          bun --version
+
+      - name: Install JS deps for analysis
+        if: steps.meta.outputs.has_bun == 'true' || steps.meta.outputs.has_node == 'true'
+        run: |
+          set -e
+          if [ "${{ steps.meta.outputs.has_bun }}" = "true" ]; then
+            bun install --frozen-lockfile || bun install
+          else
+            sudo apt-get update -y
+            sudo apt-get install -y nodejs npm || true
+            npm i -g corepack || true
+            corepack enable || true
+            if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then corepack prepare pnpm@9 --activate || true; pnpm install --frozen-lockfile || pnpm install || true; fi
+            if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i || true; fi
+            if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then corepack prepare yarn@stable --activate || true; yarn install --frozen-lockfile || yarn install || true; fi
+          fi
 
       - name: Cache dependency-check data
         uses: actions/cache@v4
@@ -36,10 +71,9 @@ jobs:
           project: "OpenCode"
           path: "."
           format: ALL
-          args: "--out dependency-check-report"
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: owasp-depcheck-report
-          path: dependency-check-report
+          path: reports
