@@ -8,7 +8,9 @@ on:
   release:
     types: [published]
   pull_request:
+  pull_request:
   push:
+    branches: [dev]
   schedule:
     - cron: "0 3 * * 1"
 permissions:
