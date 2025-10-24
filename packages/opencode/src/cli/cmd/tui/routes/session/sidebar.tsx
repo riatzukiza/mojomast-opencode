@@ -3,7 +3,7 @@ import { createMemo, For, Show, Switch, Match } from "solid-js"
 import { Theme } from "../../context/theme"
 import { Locale } from "@/util/locale"
 import path from "path"
-import type { AssistantMessage } from "@opencode-ai/sdk"
+import { summarizeContext, summarizeRequestTokens, type TokenMessage } from "@/session/token-metrics"
 
 export function Sidebar(props: { sessionID: string }) {
   const sync = useSync()
@@ -20,95 +20,35 @@ export function Sidebar(props: { sessionID: string }) {
   })
 
   const requestTokens = createMemo(() => {
-    const totals = messages().reduce(
-      (acc, x) => {
-        if (x.role === "assistant") {
-          acc.input += x.tokens.input
-          acc.output += x.tokens.output
-          acc.reasoning += x.tokens.reasoning
-        }
-        return acc
-      },
-      { input: 0, output: 0, reasoning: 0 },
-    )
-
+    const totals = summarizeRequestTokens(messages() as TokenMessage[])
     return {
       input: totals.input.toLocaleString(),
       output: totals.output.toLocaleString(),
       reasoning: totals.reasoning.toLocaleString(),
-      total: (totals.input + totals.output + totals.reasoning).toLocaleString(),
+      total: totals.total.toLocaleString(),
     }
   })
 
   const context = createMemo(() => {
-    const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
-    if (!last)
-      return {
-        tokens: "0",
-        percentage: null,
-        compactionEvents: 0,
-        conversationLength: "0",
-        instructionTokens: "0",
-        totalUserTokens: "0",
-        totalAssistantTokens: "0",
-      }
-
-    const total =
-      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
-    const model = sync.data.provider.find((x) => x.id === last.providerID)?.models[last.modelID]
-
-    // Count compaction events (summary messages)
-    const compactionEvents = messages().filter((x) => x.role === "assistant" && x.summary).length
-
-    // Get the actual system prompt content that was used
-    // We need to reconstruct the system prompt from the last message
-    const systemPromptContent = last.system?.join("") || ""
-
-    // Count characters in system prompt (rough estimate: ~4 chars per token)
-    const systemPromptChars = systemPromptContent.length
-    const estimatedSystemTokens = Math.round(systemPromptChars / 4)
-
-    // Calculate conversation length (total minus instruction tokens)
-    const conversationLength = Math.max(0, total - estimatedSystemTokens)
-
-    // Calculate user and assistant tokens based on character proportions of conversation only
-    let totalUserChars = 0
-    let totalAssistantChars = 0
-
-    messages().forEach((msg) => {
-      const parts = sync.data.part[msg.id] || []
-      if (msg.role === "user") {
-        parts.forEach((part) => {
-          if (part.type === "text") {
-            totalUserChars += part.text?.length || 0
-          }
-        })
-      } else if (msg.role === "assistant") {
-        parts.forEach((part) => {
-          if (part.type === "text") {
-            totalAssistantChars += part.text?.length || 0
-          }
-        })
-      }
+    const list = messages() as TokenMessage[]
+    const last: TokenMessage | undefined = list.findLast((msg) => msg.role === "assistant" && msg.tokens.output > 0)
+    const model = last
+      ? sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
+      : undefined
+    const summary = summarizeContext({
+      messages: list,
+      partsFor: (id) => sync.data.part[id] ?? [],
+      last,
+      contextLimit: model?.limit.context,
     })
-
-    const totalConversationChars = totalUserChars + totalAssistantChars
-
-    // Apply proportional distribution to conversation length only (excluding system prompt)
-    const userTokenRatio = totalConversationChars > 0 ? totalUserChars / totalConversationChars : 0
-    const assistantTokenRatio = totalConversationChars > 0 ? totalAssistantChars / totalConversationChars : 0
-
-    const userTokens = Math.round(conversationLength * userTokenRatio)
-    const assistantTokens = Math.round(conversationLength * assistantTokenRatio)
-
     return {
-      tokens: total.toLocaleString(),
-      percentage: model?.limit.context ? Math.round((total / model.limit.context) * 100) : null,
-      compactionEvents,
-      conversationLength: conversationLength.toLocaleString(),
-      instructionTokens: estimatedSystemTokens.toLocaleString(),
-      totalUserTokens: userTokens.toLocaleString(),
-      totalAssistantTokens: assistantTokens.toLocaleString(),
+      tokens: summary.tokens.toLocaleString(),
+      percentage: summary.percentage,
+      compactionEvents: summary.compactionEvents,
+      conversationLength: summary.conversationLength.toLocaleString(),
+      instructionTokens: summary.instructionTokens.toLocaleString(),
+      totalUserTokens: summary.totalUserTokens.toLocaleString(),
+      totalAssistantTokens: summary.totalAssistantTokens.toLocaleString(),
     }
   })
 

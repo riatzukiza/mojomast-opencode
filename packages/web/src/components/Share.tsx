@@ -8,6 +8,7 @@ import type { MessageV2 } from "opencode/session/message-v2"
 import type { Message } from "opencode/session/message"
 import type { Session } from "opencode/session/index"
 import { Part, ProviderIcon } from "./share/part"
+import { summarizeContext, summarizeRequestTokens, type TokenMessage } from "opencode/session/token-metrics"
 
 type MessageWithParts = MessageV2.Info & { parts: MessageV2.Part[] }
 
@@ -281,87 +282,42 @@ export default function Share(props: { id: string; api: string; info: Session.In
     result.created = store.info.time.created
 
     const msgs = messages()
-    for (let i = 0; i < msgs.length; i++) {
-      const msg = msgs[i]
+    const partsByID = new Map(msgs.map((msg) => [msg.id, msg.parts]))
 
+    for (const msg of msgs) {
       result.messages.push(msg)
 
       if (msg.role === "assistant") {
         result.cost += msg.cost
-        result.tokens.input += msg.tokens.input
-        result.tokens.output += msg.tokens.output
-        result.tokens.reasoning += msg.tokens.reasoning
-
         result.models[`${msg.providerID} ${msg.modelID}`] = [msg.providerID, msg.modelID]
-
-        if (msg.path.root) {
-          result.rootDir = msg.path.root
-        }
-
-        if (msg.time.completed) {
-          result.completed = msg.time.completed
-        }
+        if (msg.path.root) result.rootDir = msg.path.root
+        if (msg.time.completed) result.completed = msg.time.completed
       }
     }
 
-    // Calculate context tokens from the last assistant message
-    const last = msgs.findLast((x) => x.role === "assistant" && x.tokens.output > 0)
-    if (last) {
-      const total =
-        last.tokens.input +
-        last.tokens.output +
-        last.tokens.reasoning +
-        last.tokens.cache.read +
-        last.tokens.cache.write
+    const tokenMessages = msgs as unknown as TokenMessage[]
+    const last = tokenMessages.findLast((item) => item.role === "assistant" && item.tokens.output > 0)
 
-      // Count compaction events (summary messages)
-      result.context.compactionEvents = msgs.filter((x) => x.role === "assistant" && x.summary).length
+    const totals = summarizeRequestTokens(tokenMessages)
+    result.tokens.input = totals.input
+    result.tokens.output = totals.output
+    result.tokens.reasoning = totals.reasoning
 
-      // Get the actual system prompt content that was used
-      const systemPromptContent = last.system?.join("") || ""
+    const summary = summarizeContext({
+      messages: tokenMessages,
+      partsFor: (id) => partsByID.get(id) ?? [],
+      last,
+    })
 
-      // Count characters in system prompt (rough estimate: ~4 chars per token)
-      const systemPromptChars = systemPromptContent.length
-      const estimatedSystemTokens = Math.round(systemPromptChars / 4)
-
-      // Calculate conversation length (total minus instruction tokens)
-      result.context.conversationLength = Math.max(0, total - estimatedSystemTokens)
-      result.context.instructionTokens = estimatedSystemTokens
-      result.context.tokens = total
-
-      // Calculate total user and assistant characters across entire session history
-      let totalUserChars = 0
-      let totalAssistantChars = 0
-
-      msgs.forEach((msg) => {
-        const parts = msg.parts || []
-        if (msg.role === "user") {
-          parts.forEach((part) => {
-            if (part.type === "text") {
-              totalUserChars += part.text?.length || 0
-            }
-          })
-        } else if (msg.role === "assistant") {
-          parts.forEach((part) => {
-            if (part.type === "text") {
-              totalAssistantChars += part.text?.length || 0
-            }
-          })
-        }
-      })
-
-      // Store total character counts for display (entire conversation history)
-      result.context.totalUserChars = totalUserChars
-      result.context.totalAssistantChars = totalAssistantChars
-
-      // For current context token distribution, use the last assistant message's context
-      const totalConversationChars = totalUserChars + totalAssistantChars
-      const userTokenRatio = totalConversationChars > 0 ? totalUserChars / totalConversationChars : 0
-      const assistantTokenRatio = totalConversationChars > 0 ? totalAssistantChars / totalConversationChars : 0
-
-      result.context.totalUserTokens = Math.round(result.context.conversationLength * userTokenRatio)
-      result.context.totalAssistantTokens = Math.round(result.context.conversationLength * assistantTokenRatio)
-    }
+    result.context.tokens = summary.tokens
+    result.context.percentage = summary.percentage
+    result.context.compactionEvents = summary.compactionEvents
+    result.context.conversationLength = summary.conversationLength
+    result.context.instructionTokens = summary.instructionTokens
+    result.context.totalUserTokens = summary.totalUserTokens
+    result.context.totalAssistantTokens = summary.totalAssistantTokens
+    result.context.totalUserChars = summary.totalUserChars
+    result.context.totalAssistantChars = summary.totalAssistantChars
 
     return result
   })
