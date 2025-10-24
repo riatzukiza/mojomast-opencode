@@ -1,50 +1,11 @@
-name: av-clamav-pr
+name: (deprecated) av-clamav-pr
+# This workflow is intentionally disabled to avoid duplication.
+# Use .github/workflows/clam-av.yml instead.
 on:
-  pull_request:
-
-permissions:
-  contents: read
+  workflow_call:
 
 jobs:
-  clamav-pr:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build and package
-        id: build
-        uses: ./.github/actions/build-package
-
-      - name: Upload build bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: opencode-bundle
-          path: bundle/opencode.zip
-
-      - name: Install & update ClamAV DB
-        run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get install -y clamav clamav-freshclam unzip
-          sudo systemctl stop clamav-freshclam || true
-          sudo mkdir -p /var/lib/clamav
-          sudo chown -R clamav:clamav /var/lib/clamav
-          sudo freshclam --verbose
-          ls -lh /var/lib/clamav
-
-      - name: Extract bundle and scan
-        run: |
-          set -e
-          rm -rf dist-pr/extracted && mkdir -p dist-pr/extracted
-          unzip -q bundle/opencode.zip -d dist-pr/extracted
-          echo "File count in payload: $(find dist-pr/extracted -type f | wc -l)"
-          clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav-pr.log
-          ! grep -q 'Infected files: [1-9]' clamav-pr.log
-
-      - name: Upload PR scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: clamav-pr-scan-results
-          path: |
-            clamav-pr.log
-            bundle/opencode.zip
+      - run: echo 'Deprecated: use clam-av.yml'
