@@ -28,6 +28,7 @@ jobs:
           $zipName = "scan_$env:GITHUB_RUN_ID`_$env:GITHUB_RUN_ATTEMPT.zip"
           $zip = Join-Path (Resolve-Path 'dist-pr') $zipName
           $srcRoot = if (Test-Path dist) { 'dist' } elseif (Test-Path build) { 'build' } else { '.' }
+          $scanRoot = (Resolve-Path $srcRoot).Path
           $tempZip = Join-Path $env:RUNNER_TEMP ("scan_" + [guid]::NewGuid().ToString() + ".zip")
           function Invoke-WithRetry([scriptblock]$Script, [int]$Attempts = 10, [int]$Delay = 2) {
             for ($i=1; $i -le $Attempts; $i++) {
@@ -45,20 +46,35 @@ jobs:
           }
           # Move into working dir with retries in case Defender holds the handle
           Invoke-WithRetry { Move-Item -Force $tempZip $zip }
-          Write-Host "Created payload: $zip"
-      - name: Windows Defender scan (PR)
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "scan_root=$scanRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Created payload: $zip | scan_root: $scanRoot"
+      - name: Windows Defender scan (PR; scan directory to avoid archive skip)
         shell: pwsh
         run: |
           $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
           if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
           if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          $zip = Get-ChildItem -File 'dist-pr\*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          & $mp -Scan -ScanType 3 -File $zip.FullName
-      - name: Upload PR scan payload
+          $scanRoot = (Get-Content $env:GITHUB_OUTPUT | Select-String '^scan_root=' | ForEach-Object { $_.ToString().Split('=')[1] })[-1]
+          & $mp -Scan -ScanType 3 -File $scanRoot
+      - name: Collect Defender detections (PR)
+        shell: pwsh
+        run: |
+          $since = (Get-Date).AddMinutes(-30)
+          $scanRoot = (Get-Content $env:GITHUB_OUTPUT | Select-String '^scan_root=' | ForEach-Object { $_.ToString().Split('=')[1] })[-1]
+          $re = [Regex]::Escape($scanRoot)
+          $recent = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since -and $_.Resources -and ($_.Resources.Resource -match $re) }
+          if ($recent) {
+            $recent | ConvertTo-Json -Depth 5 | Out-File dist-pr\defender-pr-detections.json -Encoding UTF8
+            Write-Host 'Detections found.'
+          } else { '{"status":"clean"}' | Out-File dist-pr\defender-pr-detections.json -Encoding UTF8 }
+      - name: Upload PR scan payload & results
         uses: actions/upload-artifact@v4
         with:
-          name: defender-pr-scan-input
-          path: dist-pr/*.zip
+          name: defender-pr-results
+          path: |
+            dist-pr/*.zip
+            dist-pr/defender-pr-detections.json
 
   defender-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
