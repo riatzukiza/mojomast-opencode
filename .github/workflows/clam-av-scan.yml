@@ -1,16 +1,13 @@
-name: av-clamav
+name: av-clamav-release
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to scan (e.g., v0.15.16)'
+        description: 'Git tag to build and scan (e.g., v0.15.16)'
         required: false
   release:
     types: [published]
-  pull_request:
-    branches: [dev]
-  schedule:
-    - cron: "0 3 * * 1"
+
 permissions:
   contents: read
   actions: read
@@ -20,101 +17,33 @@ defaults:
     shell: bash
 
 jobs:
-  clamav-pr:
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+  clamav-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Checkout the right ref
+      - name: Checkout (release tag)
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Checkout (manual or default)
+        if: github.event_name != 'release'
+        uses: actions/checkout@v4
 
-      - name: Detect repo meta (Bun/Node/Rust/Go)
-        id: meta
-        run: |
-          set -e
-          # search across tracked files anywhere in the repo
-          has_file() { git ls-files -z | tr '\0' '\n' | grep -qE "$1" && echo true || echo false; }
-          echo "has_bun=$(has_file '(^|/)bun\.lockb$')" >> "$GITHUB_OUTPUT"
-          echo "has_node=$(has_file '(^|/)package\.json$')" >> "$GITHUB_OUTPUT"
-          echo "has_pnpm_lock=$(has_file '(^|/)pnpm-lock\.yaml$')" >> "$GITHUB_OUTPUT"
-          echo "has_yarn_lock=$(has_file '(^|/)yarn\.lock$')" >> "$GITHUB_OUTPUT"
-          echo "has_package_lock=$(has_file '(^|/)package-lock\.json$')" >> "$GITHUB_OUTPUT"
-          echo "has_rust=$(has_file '(^|/)Cargo\.toml$')" >> "$GITHUB_OUTPUT"
-          echo "has_go=$(has_file '(^|/)go\.mod$')" >> "$GITHUB_OUTPUT"
-
-      - name: Dump meta detection
-        run: |
-          echo "bun=${{ steps.meta.outputs.has_bun }} node=${{ steps.meta.outputs.has_node }} pnpm=${{ steps.meta.outputs.has_pnpm_lock }} yarn=${{ steps.meta.outputs.has_yarn_lock }} npm_lock=${{ steps.meta.outputs.has_package_lock }} rust=${{ steps.meta.outputs.has_rust }} go=${{ steps.meta.outputs.has_go }}"
-
-      # --- JavaScript path (prefer Bun if present) ---
+      # Build with Bun (single source of truth)
       - name: Setup Bun
-        if: steps.meta.outputs.has_bun == 'true'
         run: |
           curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
           bun --version
-
-      - name: Install deps (Bun)
-        if: steps.meta.outputs.has_bun == 'true'
+      - name: Install dependencies (Bun)
         run: |
-          bun install --frozen-lockfile || bun install || true
-
+          bun install --frozen-lockfile || bun install
       - name: Build (Bun)
-        if: steps.meta.outputs.has_bun == 'true'
         run: |
-          bun run build || true
+          bun run build
 
-      - name: Setup Node via corepack (only when Bun not detected)
-        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y nodejs npm || true
-          npm i -g corepack || true
-          corepack enable || true
-          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then corepack prepare yarn@stable --activate || true; fi
-          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then corepack prepare pnpm@9 --activate || true; fi
-          node -v || true
-          corepack -v || true
-
-      - name: Install deps (Node)
-        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
-        run: |
-          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install || true; fi
-          if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i || true; fi
-          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then (yarn --version || true) && (yarn install --frozen-lockfile || yarn install || true); fi
-
-      - name: Build (Node)
-        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
-        run: |
-          pnpm run -c build || pnpm -r build || pnpm -w build || npm run build || yarn build || true
-
-      # --- Rust path ---
-      - name: Setup Rust (rustup)
-        if: steps.meta.outputs.has_rust == 'true'
-        run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustc --version || true
-
-      - name: Build (Rust)
-        if: steps.meta.outputs.has_rust == 'true'
-        run: cargo build --release || true
-
-      # --- Go path ---
-      - name: Setup Go
-        if: steps.meta.outputs.has_go == 'true'
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22.x'
-
-      - name: Build (Go)
-        if: steps.meta.outputs.has_go == 'true'
-        run: |
-          mkdir -p dist
-          if ls cmd >/dev/null 2>&1; then
-            for d in cmd/*; do name=$(basename "$d"); go build -o "dist/$name" "./$d" || true; done
-          else
-            go build -o dist/opencode ./... || true
-          fi
-
+      # Package build outputs (and, as fallback, repo without VCS)
       - name: Package build outputs
         run: |
           set -e
@@ -122,13 +51,13 @@ jobs:
           mkdir -p dist-pr/payload
           [ -d dist ] && cp -a dist/. dist-pr/payload/ || true
           [ -d build ] && cp -a build/. dist-pr/payload/ || true
-          [ -d target/release ] && cp -a target/release/. dist-pr/payload/ || true
           if [ -z "$(ls -A dist-pr/payload 2>/dev/null)" ]; then
-            rsync -a --exclude '.git' --exclude '.github' ./ dist-pr/payload/
+            rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ dist-pr/payload/
           fi
           tar -czf dist-pr/scan.tgz -C dist-pr/payload .
           ls -lh dist-pr/scan.tgz
 
+      # Install ClamAV signatures
       - name: Install & update ClamAV DB
         run: |
           set -e
@@ -140,66 +69,20 @@ jobs:
           sudo freshclam --verbose
           ls -lh /var/lib/clamav
 
+      # Extract and scan so file counts reflect real contents
       - name: ClamAV scan (extract and scan all files)
         run: |
           set -e
           mkdir -p dist-pr/extracted
           tar -xzf dist-pr/scan.tgz -C dist-pr/extracted
           echo "File count in payload: $(find dist-pr/extracted -type f | wc -l)"
-          clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav-pr.log
-          ! grep -q 'Infected files: [1-9]' clamav-pr.log
-
-      - name: Upload PR scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: clamav-pr-scan-results
-          path: |
-            clamav-pr.log
-            dist-pr/scan.tgz
-
-  clamav-scan:
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    name: ClamAV scan (release assets)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Install & update ClamAV DB
-        run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get install -y clamav clamav-freshclam
-          sudo systemctl stop clamav-freshclam || true
-          sudo mkdir -p /var/lib/clamav
-          sudo chown -R clamav:clamav /var/lib/clamav
-          sudo freshclam --verbose
-          ls -lh /var/lib/clamav
-
-      - name: Resolve release tag
-        id: resolve_tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="${{ github.event.release.tag_name }}"
-          if [ -z "$tag" ]; then tag="${{ github.event.inputs.tag }}"; fi
-          if [ -z "$tag" ]; then tag="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"; fi
-          if [ -z "$tag" ]; then echo 'No release tag found' >&2; exit 1; fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-      - name: Download assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p dist-release
-          gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
-
-      - name: Scan with ClamAV (release assets)
-        run: |
-          clamscan -ri --scan-archive=yes dist-release | tee clamav.log
+          clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav.log
           ! grep -q 'Infected files: [1-9]' clamav.log
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
-          name: clamav-scan-results
-          path: clamav.log
+          name: clamav-release-scan-results
+          path: |
+            clamav.log
+            dist-pr/scan.tgz
