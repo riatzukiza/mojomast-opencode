@@ -19,6 +19,16 @@ export function Sidebar(props: { sessionID: string }) {
     }).format(total)
   })
 
+  const requestTokens = createMemo(() => {
+    const total = messages().reduce((sum, x) => {
+      if (x.role === "assistant") {
+        return sum + x.tokens.input + x.tokens.output + x.tokens.reasoning
+      }
+      return sum
+    }, 0)
+    return total.toLocaleString()
+  })
+
   const context = createMemo(() => {
     const last = messages().findLast((x) => x.role === "assistant" && x.tokens.output > 0) as AssistantMessage
     if (!last) return
@@ -48,6 +58,7 @@ export function Sidebar(props: { sessionID: string }) {
           </text>
           <text fg={Theme.textMuted}>{context()?.tokens ?? 0} tokens</text>
           <text fg={Theme.textMuted}>{context()?.percentage ?? 0}% used</text>
+          <text fg={Theme.textMuted}>{requestTokens()} total</text>
           <text fg={Theme.textMuted}>{cost()} spent</text>
         </box>
         <Show when={Object.keys(sync.data.mcp).length > 0}>
