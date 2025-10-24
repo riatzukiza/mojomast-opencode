@@ -271,6 +271,8 @@ export default function Share(props: { id: string; api: string; info: Session.In
         instructionTokens: 0,
         totalUserTokens: 0,
         totalAssistantTokens: 0,
+        totalUserChars: 0,
+        totalAssistantChars: 0,
       },
     }
 
@@ -327,19 +329,20 @@ export default function Share(props: { id: string; api: string; info: Session.In
       result.context.instructionTokens = estimatedSystemTokens
       result.context.tokens = total
 
-      // Calculate user and assistant tokens based on character proportions
+      // Calculate total user and assistant characters across entire session history
       let totalUserChars = 0
       let totalAssistantChars = 0
 
       msgs.forEach((msg) => {
+        const parts = msg.parts || []
         if (msg.role === "user") {
-          msg.parts?.forEach((part) => {
+          parts.forEach((part) => {
             if (part.type === "text") {
               totalUserChars += part.text?.length || 0
             }
           })
         } else if (msg.role === "assistant") {
-          msg.parts?.forEach((part) => {
+          parts.forEach((part) => {
             if (part.type === "text") {
               totalAssistantChars += part.text?.length || 0
             }
@@ -347,6 +350,11 @@ export default function Share(props: { id: string; api: string; info: Session.In
         }
       })
 
+      // Store total character counts for display (entire conversation history)
+      result.context.totalUserChars = totalUserChars
+      result.context.totalAssistantChars = totalAssistantChars
+
+      // For current context token distribution, use the last assistant message's context
       const totalConversationChars = totalUserChars + totalAssistantChars
       const userTokenRatio = totalConversationChars > 0 ? totalUserChars / totalConversationChars : 0
       const assistantTokenRatio = totalConversationChars > 0 ? totalAssistantChars / totalConversationChars : 0
@@ -458,84 +466,121 @@ export default function Share(props: { id: string; api: string; info: Session.In
                 </div>
                 <div data-section="content">
                   <p data-section="copy">{getStatusText(connectionStatus())}</p>
-                  <ul data-section="stats">
-                    <li>
-                      <span data-element-label>Cost</span>
-                      {data().cost !== undefined ? (
-                        <span>${data().cost.toFixed(2)}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Input Tokens</span>
-                      {data().tokens.input ? <span>{data().tokens.input}</span> : <span data-placeholder>&mdash;</span>}
-                    </li>
-                    <li>
-                      <span data-element-label>Output Tokens</span>
-                      {data().tokens.output ? (
-                        <span>{data().tokens.output}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Reasoning Tokens</span>
-                      {data().tokens.reasoning ? (
-                        <span>{data().tokens.reasoning}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Context Tokens</span>
-                      {data().context.tokens ? (
-                        <span>{data().context.tokens.toLocaleString()}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Compaction Events</span>
-                      {data().context.compactionEvents ? (
-                        <span>{data().context.compactionEvents}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Conversation Length</span>
-                      {data().context.conversationLength ? (
-                        <span>{data().context.conversationLength.toLocaleString()}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Instruction Tokens</span>
-                      {data().context.instructionTokens ? (
-                        <span>{data().context.instructionTokens.toLocaleString()}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>User Tokens</span>
-                      {data().context.totalUserTokens ? (
-                        <span>{data().context.totalUserTokens.toLocaleString()}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                    <li>
-                      <span data-element-label>Assistant Tokens</span>
-                      {data().context.totalAssistantTokens ? (
-                        <span>{data().context.totalAssistantTokens.toLocaleString()}</span>
-                      ) : (
-                        <span data-placeholder>&mdash;</span>
-                      )}
-                    </li>
-                  </ul>
+                  <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    {/* API Token Metrics */}
+                    <div>
+                      <div style="font-size: 0.75rem; font-weight: 500; color: #6b7280; margin-bottom: 0.5rem;">
+                        API Token Metrics
+                      </div>
+                      <ul data-section="stats" style="margin: 0;">
+                        <li>
+                          <span data-element-label>Cost</span>
+                          {data().cost !== undefined ? (
+                            <span>${data().cost.toFixed(2)}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Input Tokens</span>
+                          {data().tokens.input ? (
+                            <span>{data().tokens.input}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Output Tokens</span>
+                          {data().tokens.output ? (
+                            <span>{data().tokens.output}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Reasoning Tokens</span>
+                          {data().tokens.reasoning ? (
+                            <span>{data().tokens.reasoning}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Context Analysis */}
+                    <div>
+                      <div style="font-size: 0.75rem; font-weight: 500; color: #6b7280; margin-bottom: 0.5rem;">
+                        Context Analysis
+                      </div>
+                      <ul data-section="stats" style="margin: 0;">
+                        <li>
+                          <span data-element-label>Context Tokens</span>
+                          {data().context.tokens ? (
+                            <span>{data().context.tokens.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Compaction Events</span>
+                          {data().context.compactionEvents ? (
+                            <span>{data().context.compactionEvents}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Conversation Length</span>
+                          {data().context.conversationLength ? (
+                            <span>{data().context.conversationLength.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Instruction Tokens</span>
+                          {data().context.instructionTokens ? (
+                            <span>{data().context.instructionTokens.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>User Tokens</span>
+                          {data().context.totalUserTokens ? (
+                            <span>{data().context.totalUserTokens.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Assistant Tokens</span>
+                          {data().context.totalAssistantTokens ? (
+                            <span>{data().context.totalAssistantTokens.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>User Characters</span>
+                          {data().context.totalUserChars ? (
+                            <span>{data().context.totalUserChars.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                        <li>
+                          <span data-element-label>Assistant Characters</span>
+                          {data().context.totalAssistantChars ? (
+                            <span>{data().context.totalAssistantChars.toLocaleString()}</span>
+                          ) : (
+                            <span data-placeholder>&mdash;</span>
+                          )}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

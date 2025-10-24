@@ -173,13 +173,61 @@ export function Session() {
       keybind: "session_share",
       disabled: !!session()?.share?.url,
       category: "Session",
-      onSelect: (dialog) => {
-        sdk.client.session.share({
-          path: {
-            id: route.sessionID,
-          },
-        })
-        dialog.clear()
+      onSelect: async (dialog) => {
+        try {
+          dialog.replace(() => (
+            <box padding={1}>
+              <text>Creating share link...</text>
+            </box>
+          ))
+
+          const result = await sdk.client.session.share({
+            path: {
+              id: route.sessionID,
+            },
+          })
+
+          console.log("Share result:", result)
+          if (result.error) {
+            let errorMessage: string
+            if ("name" in result.error && result.error.name === "NotFoundError") {
+              errorMessage = (result.error as any).data.message || "Unknown error"
+            } else {
+              errorMessage = JSON.stringify(result.error)
+            }
+            dialog.replace(() => (
+              <box padding={1} flexDirection="column" gap={1}>
+                <text fg={Theme.error}>Failed to create share link</text>
+                <text fg={Theme.textMuted}>Error: {errorMessage}</text>
+                <text fg={Theme.textMuted}>Check your internet connection and API URL</text>
+              </box>
+            ))
+            setTimeout(() => dialog.clear(), 8000)
+          } else {
+            dialog.replace(() => (
+              <box padding={1} flexDirection="column" gap={1}>
+                <text fg={Theme.success}>✓ Share link created successfully!</text>
+                <text fg={Theme.textMuted}>URL: {result.data?.share?.url}</text>
+                <text fg={Theme.textMuted}>Link copied to clipboard (if supported)</text>
+              </box>
+            ))
+            setTimeout(() => dialog.clear(), 8000)
+          }
+        } catch (error) {
+          console.log("Share catch error:", error)
+          const errorMessage =
+            error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error)
+          dialog.replace(() => (
+            <box padding={1} flexDirection="column" gap={1}>
+              <text fg={Theme.error}>Failed to create share link</text>
+              <text fg={Theme.textMuted}>Error: {errorMessage}</text>
+              <text fg={Theme.textMuted}>
+                Check your internet connection and API URL (should be https://api.opencode.ai)
+              </text>
+            </box>
+          ))
+          setTimeout(() => dialog.clear(), 8000)
+        }
       },
     },
     {

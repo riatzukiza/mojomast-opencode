@@ -71,19 +71,20 @@ export function Sidebar(props: { sessionID: string }) {
     // Calculate conversation length (total minus instruction tokens)
     const conversationLength = Math.max(0, total - estimatedSystemTokens)
 
-    // Calculate user and assistant tokens based on character proportions
+    // Calculate user and assistant tokens based on character proportions of conversation only
     let totalUserChars = 0
     let totalAssistantChars = 0
 
     messages().forEach((msg) => {
+      const parts = sync.data.part[msg.id] || []
       if (msg.role === "user") {
-        msg.parts?.forEach((part) => {
+        parts.forEach((part) => {
           if (part.type === "text") {
             totalUserChars += part.text?.length || 0
           }
         })
       } else if (msg.role === "assistant") {
-        msg.parts?.forEach((part) => {
+        parts.forEach((part) => {
           if (part.type === "text") {
             totalAssistantChars += part.text?.length || 0
           }
@@ -92,6 +93,8 @@ export function Sidebar(props: { sessionID: string }) {
     })
 
     const totalConversationChars = totalUserChars + totalAssistantChars
+
+    // Apply proportional distribution to conversation length only (excluding system prompt)
     const userTokenRatio = totalConversationChars > 0 ? totalUserChars / totalConversationChars : 0
     const assistantTokenRatio = totalConversationChars > 0 ? totalAssistantChars / totalConversationChars : 0
 
