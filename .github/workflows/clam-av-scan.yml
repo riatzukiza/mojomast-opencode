@@ -1,0 +1,37 @@
+name: av-clamav
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  clamav-scan:
+    name: ClamAV scan (release assets)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Install ClamAV
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav
+          sudo freshclam || true
+
+      - name: Download assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist-release
+          gh release download "${{ github.event.release.tag_name }}" --dir dist-release --clobber
+
+      - name: Scan with ClamAV
+        run: |
+          clamscan -ri dist-release | tee clamav.log
+          # Fail if infected found
+          ! grep -q "Infected files: [1-9]" clamav.log
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clamav-scan-results
+          path: clamav.log
