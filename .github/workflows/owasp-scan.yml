@@ -20,7 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Cache DC data to speed up runs
       - name: Cache dependency-check data
         uses: actions/cache@v4
         with:
@@ -30,13 +29,14 @@ jobs:
             depcheck-data-${{ runner.os }}-
 
       - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@v4.1.3
+        uses: dependency-check/Dependency-Check_Action@1.1.0
+        env:
+          JAVA_HOME: /opt/jdk
         with:
           project: "OpenCode"
           path: "."
-          format: "HTML,JSON"
-          out: "dependency-check-report"
-          # optionally: args: "--enableRetired"
+          format: ALL
+          args: "--out dependency-check-report"
 
       - name: Upload reports
         uses: actions/upload-artifact@v4

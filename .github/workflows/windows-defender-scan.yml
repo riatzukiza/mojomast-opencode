@@ -25,24 +25,28 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
-          if (Test-Path dist) { Compress-Archive -Path dist\* -DestinationPath dist-pr\scan.zip -Force }
-          elseif (Test-Path build) { Compress-Archive -Path build\* -DestinationPath dist-pr\scan.zip -Force }
-          else { Compress-Archive -Path * -DestinationPath dist-pr\scan.zip -Force }
+          $zip = Join-Path 'dist-pr' ("scan_" + $env:GITHUB_RUN_ID + '_' + $env:GITHUB_RUN_ATTEMPT + '.zip')
+          $src =
+            if (Test-Path dist) { 'dist\*' }
+            elseif (Test-Path build) { 'build\*' }
+            else { '*' }
+          Compress-Archive -Path $src -DestinationPath $zip -Force
       - name: Windows Defender scan (PR)
         shell: pwsh
         run: |
           $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
           if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
           if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          & $mp -Scan -ScanType 3 -File (Resolve-Path 'dist-pr\scan.zip')
-      - name: Upload PR scan results
+          $zip = Get-ChildItem -File 'dist-pr\*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          & $mp -Scan -ScanType 3 -File $zip.FullName
+      - name: Upload PR scan payload
         uses: actions/upload-artifact@v4
         with:
           name: defender-pr-scan-input
-          path: dist-pr/scan.zip
+          path: dist-pr/*.zip
 
   defender-scan:
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     name: Windows Defender scan (release assets)
     runs-on: windows-latest
     permissions:
