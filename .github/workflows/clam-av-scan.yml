@@ -20,7 +20,6 @@ jobs:
   clamav-release:
     runs-on: ubuntu-latest
     steps:
-      # Checkout the right ref
       - name: Checkout (release tag)
         if: github.event_name == 'release'
         uses: actions/checkout@v4
@@ -30,20 +29,18 @@ jobs:
         if: github.event_name != 'release'
         uses: actions/checkout@v4
 
-      # Build with Bun (single source of truth)
       - name: Setup Bun
-        run: |
-          curl -fsSL https://bun.sh/install | bash
-          echo "$HOME/.bun/bin" >> $GITHUB_PATH
-          bun --version
-      - name: Install dependencies (Bun)
-        run: |
-          bun install --frozen-lockfile || bun install
-      - name: Build (Bun)
-        run: |
-          bun run build
+        uses: ./.github/actions/setup-bun
 
-      # Package build outputs (and, as fallback, repo without VCS)
+      - name: Verify Bun
+        run: bun --version
+
+      - name: Install dependencies (Bun)
+        run: bun install --frozen-lockfile || bun install
+
+      - name: Build (Bun)
+        run: bun run build
+
       - name: Package build outputs
         run: |
           set -e
@@ -57,7 +54,6 @@ jobs:
           tar -czf dist-pr/scan.tgz -C dist-pr/payload .
           ls -lh dist-pr/scan.tgz
 
-      # Install ClamAV signatures
       - name: Install & update ClamAV DB
         run: |
           set -e
@@ -69,13 +65,12 @@ jobs:
           sudo freshclam --verbose
           ls -lh /var/lib/clamav
 
-      # Extract and scan so file counts reflect real contents
       - name: ClamAV scan (extract and scan all files)
         run: |
           set -e
           mkdir -p dist-pr/extracted
           tar -xzf dist-pr/scan.tgz -C dist-pr/extracted
-          echo "File count in payload: $(find dist-pr/extracted -type f | wc -l)"
+          echo 'File count in payload: '$(find dist-pr/extracted -type f | wc -l)
           clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav.log
           ! grep -q 'Infected files: [1-9]' clamav.log
 
