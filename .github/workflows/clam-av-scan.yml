@@ -13,6 +13,11 @@ on:
     - cron: "0 3 * * 1"
 permissions:
   contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   clamav-pr:
@@ -33,35 +38,28 @@ jobs:
           echo "has_go=$([ -f go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       # --- JavaScript path (Bun/Node) ---
-      - name: Setup Bun
+      - name: Setup Bun (no external action)
         if: steps.meta.outputs.has_bun_lock == 'true'
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: '1.x'
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+          bun --version
 
-      - name: Setup Node
-        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Enable Corepack (Node)
+      - name: Setup Node via corepack (fallback when not Bun)
         if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         run: |
+          sudo apt-get update -y
+          sudo apt-get install -y nodejs npm || true
           npm i -g corepack || true
           corepack enable || true
           if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then corepack prepare yarn@stable --activate || true; fi
-
-      - name: Setup pnpm
-        if: steps.meta.outputs.has_pnpm_lock == 'true' && steps.meta.outputs.has_bun_lock != 'true'
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then corepack prepare pnpm@9 --activate || true; fi
+          node -v || true
+          corepack -v || true
 
       - name: Install deps (Bun)
         if: steps.meta.outputs.has_bun_lock == 'true'
         run: |
-          bun --version
           bun install --frozen-lockfile || bun install || true
 
       - name: Build (Bun)
@@ -79,18 +77,21 @@ jobs:
       - name: Build (Node)
         if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         run: |
-          pnpm run -c build || pnpm -r build || pnpm -w build || npm run build || yarn build || true
+          pnpm run -c build || pnpm -r build || pnpm -w build || \n          npm run build || yarn build || true
 
-      # --- Rust path ---
-      - name: Setup Rust
+      # --- Rust path (no external action) ---
+      - name: Setup Rust (rustup)
         if: steps.meta.outputs.has_cargo == 'true'
-        uses: dtolnay/rust-toolchain@stable
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustc --version || true
 
       - name: Build (Rust)
         if: steps.meta.outputs.has_cargo == 'true'
         run: cargo build --release || true
 
-      # --- Go path ---
+      # --- Go path (first-party action ok) ---
       - name: Setup Go
         if: steps.meta.outputs.has_go == 'true'
         uses: actions/setup-go@v5
@@ -137,7 +138,7 @@ jobs:
             dist-pr/scan.tgz
 
   clamav-scan:
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     name: ClamAV scan (release assets)
     runs-on: ubuntu-latest
     permissions:
