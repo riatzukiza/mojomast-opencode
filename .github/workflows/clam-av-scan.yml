@@ -1,6 +1,10 @@
 name: av-clamav
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to scan (e.g., v0.15.16)'
+        required: false
   release:
     types: [published]
   pull_request:
@@ -16,31 +20,100 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Detect repo meta
+        id: meta
+        run: |
+          echo "has_package_json=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_pnpm_lock=$([ -f pnpm-lock.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_yarn_lock=$([ -f yarn.lock ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_package_lock=$([ -f package-lock.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_cargo=$([ -n \"$(git ls-files | grep -E '(^|/)Cargo.toml$')\" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "has_go=$([ -f go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        if: steps.meta.outputs.has_package_json == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        if: steps.meta.outputs.has_pnpm_lock == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps (Node)
+        if: steps.meta.outputs.has_package_json == 'true'
+        run: |
+          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install; exit 0; fi
+          if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i; exit 0; fi
+          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then yarn install --frozen-lockfile || yarn install; exit 0; fi
+          echo "No Node lockfile found; skipping install"
+
+      - name: Build (Node)
+        if: steps.meta.outputs.has_package_json == 'true'
+        run: |
+          set -e
+          pnpm run -c build || pnpm -r build || pnpm -w build || \n          npm run build || yarn build || echo 'No Node build script succeeded; continuing'
+
+      - name: Setup Rust
+        if: steps.meta.outputs.has_cargo == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build (Rust)
+        if: steps.meta.outputs.has_cargo == 'true'
+        run: cargo build --release
+
+      - name: Setup Go
+        if: steps.meta.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+
+      - name: Build (Go)
+        if: steps.meta.outputs.has_go == 'true'
+        run: |
+          set -e
+          mkdir -p dist
+          if ls cmd >/dev/null 2>&1; then
+            for d in cmd/*; do name=$(basename "$d"); go build -o "dist/$name" "./$d"; done
+          else
+            go build -o dist/opencode ./...
+          fi
+
+      - name: Package build outputs
+        run: |
+          set -e
+          mkdir -p dist-pr
+          if [ -d dist ]; then zip -qr dist-pr/scan.zip dist
+          elif [ -d build ]; then zip -qr dist-pr/scan.zip build
+          elif [ -d target/release ]; then zip -qr dist-pr/scan.zip target/release
+          else zip -qr dist-pr/scan.zip . -x '.git/*' '.github/*'
+          fi
+
       - name: Install ClamAV
         run: |
           sudo apt-get update
           sudo apt-get install -y clamav
           sudo freshclam || true
-      - name: Prepare PR scan payload
-        run: |
-          mkdir -p dist-pr
-          if [ -d dist ]; then tar -czf dist-pr/scan.tgz -C dist .; \
-          elif [ -d build ]; then tar -czf dist-pr/scan.tgz -C build .; \
-          else tar -czf dist-pr/scan.tgz --exclude=.git --exclude=.github .; fi
+
       - name: ClamAV scan (PR)
         run: |
           clamscan -ri --scan-archive=yes dist-pr | tee clamav-pr.log
-          ! grep -q "Infected files: [1-9]" clamav-pr.log
+          ! grep -q 'Infected files: [1-9]' clamav-pr.log
+
       - name: Upload PR scan results
         uses: actions/upload-artifact@v4
         with:
           name: clamav-pr-scan-results
           path: |
             clamav-pr.log
-            dist-pr/scan.tgz
+            dist-pr/scan.zip
 
   clamav-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    name: ClamAV scan (release assets)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -50,6 +123,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clamav
           sudo freshclam || true
+
       - name: Resolve release tag
         id: resolve_tag
         env:
@@ -58,18 +132,21 @@ jobs:
           tag="${{ github.event.release.tag_name }}"
           if [ -z "$tag" ]; then tag="${{ github.event.inputs.tag }}"; fi
           if [ -z "$tag" ]; then tag="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"; fi
-          if [ -z "$tag" ]; then echo "No release tag found" >&2; exit 1; fi
+          if [ -z "$tag" ]; then echo 'No release tag found' >&2; exit 1; fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Download assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist-release
           gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
+
       - name: Scan with ClamAV (release assets)
         run: |
           clamscan -ri dist-release | tee clamav.log
-          ! grep -q "Infected files: [1-9]" clamav.log
+          ! grep -q 'Infected files: [1-9]' clamav.log
+
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
