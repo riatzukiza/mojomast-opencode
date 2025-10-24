@@ -25,12 +25,27 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
-          $zip = Join-Path 'dist-pr' ("scan_" + $env:GITHUB_RUN_ID + '_' + $env:GITHUB_RUN_ATTEMPT + '.zip')
-          $src =
-            if (Test-Path dist) { 'dist\*' }
-            elseif (Test-Path build) { 'build\*' }
-            else { '*' }
-          Compress-Archive -Path $src -DestinationPath $zip -Force
+          $zipName = "scan_$env:GITHUB_RUN_ID`_$env:GITHUB_RUN_ATTEMPT.zip"
+          $zip = Join-Path (Resolve-Path 'dist-pr') $zipName
+          $srcRoot = if (Test-Path dist) { 'dist' } elseif (Test-Path build) { 'build' } else { '.' }
+          $tempZip = Join-Path $env:RUNNER_TEMP ("scan_" + [guid]::NewGuid().ToString() + ".zip")
+          function Invoke-WithRetry([scriptblock]$Script, [int]$Attempts = 10, [int]$Delay = 2) {
+            for ($i=1; $i -le $Attempts; $i++) {
+              try { & $Script; return } catch { if ($i -eq $Attempts) { throw }; Start-Sleep -Seconds $Delay }
+            }
+          }
+          # Create the zip in temp using bsdtar (avoids Compress-Archive locking issues)
+          Invoke-WithRetry {
+            if (Test-Path $tempZip) { Remove-Item -Force $tempZip }
+            if ($srcRoot -eq '.') {
+              tar -a -c -f $tempZip --exclude=.git --exclude=.github *
+            } else {
+              tar -a -c -f $tempZip -C $srcRoot .
+            }
+          }
+          # Move into working dir with retries in case Defender holds the handle
+          Invoke-WithRetry { Move-Item -Force $tempZip $zip }
+          Write-Host "Created payload: $zip"
       - name: Windows Defender scan (PR)
         shell: pwsh
         run: |
