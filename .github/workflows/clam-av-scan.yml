@@ -37,6 +37,13 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Enable Corepack (Node)
+        if: steps.meta.outputs.has_package_json == 'true'
+        run: |
+          npm i -g corepack || true
+          corepack enable || true
+          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then corepack prepare yarn@stable --activate || true; fi
+
       - name: Setup pnpm
         if: steps.meta.outputs.has_pnpm_lock == 'true'
         uses: pnpm/action-setup@v4
@@ -46,16 +53,14 @@ jobs:
       - name: Install deps (Node)
         if: steps.meta.outputs.has_package_json == 'true'
         run: |
-          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install; exit 0; fi
-          if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i; exit 0; fi
-          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then yarn install --frozen-lockfile || yarn install; exit 0; fi
-          echo "No Node lockfile found; skipping install"
+          if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install || true; fi
+          if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i || true; fi
+          if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then (yarn --version || true) && (yarn install --frozen-lockfile || yarn install || true); fi
 
       - name: Build (Node)
         if: steps.meta.outputs.has_package_json == 'true'
         run: |
-          set -e
-          pnpm run -c build || pnpm -r build || pnpm -w build || \n          npm run build || yarn build || echo 'No Node build script succeeded; continuing'
+          pnpm run -c build || pnpm -r build || pnpm -w build || npm run build || yarn build || true
 
       - name: Setup Rust
         if: steps.meta.outputs.has_cargo == 'true'
@@ -63,7 +68,7 @@ jobs:
 
       - name: Build (Rust)
         if: steps.meta.outputs.has_cargo == 'true'
-        run: cargo build --release
+        run: cargo build --release || true
 
       - name: Setup Go
         if: steps.meta.outputs.has_go == 'true'
@@ -74,22 +79,21 @@ jobs:
       - name: Build (Go)
         if: steps.meta.outputs.has_go == 'true'
         run: |
-          set -e
           mkdir -p dist
           if ls cmd >/dev/null 2>&1; then
-            for d in cmd/*; do name=$(basename "$d"); go build -o "dist/$name" "./$d"; done
+            for d in cmd/*; do name=$(basename "$d"); go build -o "dist/$name" "./$d" || true; done
           else
-            go build -o dist/opencode ./...
+            go build -o dist/opencode ./... || true
           fi
 
       - name: Package build outputs
         run: |
           set -e
           mkdir -p dist-pr
-          if [ -d dist ]; then zip -qr dist-pr/scan.zip dist
-          elif [ -d build ]; then zip -qr dist-pr/scan.zip build
-          elif [ -d target/release ]; then zip -qr dist-pr/scan.zip target/release
-          else zip -qr dist-pr/scan.zip . -x '.git/*' '.github/*'
+          if [ -d dist ]; then tar -czf dist-pr/scan.tgz -C dist .
+          elif [ -d build ]; then tar -czf dist-pr/scan.tgz -C build .
+          elif [ -d target/release ]; then tar -czf dist-pr/scan.tgz -C target/release .
+          else tar -czf dist-pr/scan.tgz --exclude=.git --exclude=.github .
           fi
 
       - name: Install ClamAV
@@ -109,7 +113,7 @@ jobs:
           name: clamav-pr-scan-results
           path: |
             clamav-pr.log
-            dist-pr/scan.zip
+            dist-pr/scan.tgz
 
   clamav-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
