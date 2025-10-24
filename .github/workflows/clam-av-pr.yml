@@ -5,54 +5,39 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   clamav-pr:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
+      - name: Build and package
+        id: build
+        uses: ./.github/actions/build-package
 
-      - name: Verify Bun
-        run: bun --version
-
-      - name: Install dependencies (Bun)
-        run: bun install --frozen-lockfile || bun install
-
-      - name: Build (Bun)
-        run: bun run build
-
-      - name: Package build outputs
-        run: |
-          set -e
-          rm -rf dist-pr/payload
-          mkdir -p dist-pr/payload
-          rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ dist-pr/payload/
-          tar -czf dist-pr/scan.tgz -C dist-pr/payload .
-          ls -lh dist-pr/scan.tgz
+      - name: Upload build bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-bundle
+          path: bundle/opencode.zip
 
       - name: Install & update ClamAV DB
         run: |
           set -e
           sudo apt-get update
-          sudo apt-get install -y clamav clamav-freshclam
+          sudo apt-get install -y clamav clamav-freshclam unzip
           sudo systemctl stop clamav-freshclam || true
           sudo mkdir -p /var/lib/clamav
           sudo chown -R clamav:clamav /var/lib/clamav
           sudo freshclam --verbose
           ls -lh /var/lib/clamav
 
-      - name: ClamAV scan (extract and scan all files)
+      - name: Extract bundle and scan
         run: |
           set -e
-          mkdir -p dist-pr/extracted
-          tar -xzf dist-pr/scan.tgz -C dist-pr/extracted
-          echo 'File count in payload: '$(find dist-pr/extracted -type f | wc -l)
+          rm -rf dist-pr/extracted && mkdir -p dist-pr/extracted
+          unzip -q bundle/opencode.zip -d dist-pr/extracted
+          echo "File count in payload: $(find dist-pr/extracted -type f | wc -l)"
           clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav-pr.log
           ! grep -q 'Infected files: [1-9]' clamav-pr.log
 
@@ -62,4 +47,4 @@ jobs:
           name: clamav-pr-scan-results
           path: |
             clamav-pr.log
-            dist-pr/scan.tgz
+            bundle/opencode.zip
