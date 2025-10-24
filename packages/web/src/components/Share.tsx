@@ -263,6 +263,15 @@ export default function Share(props: { id: string; api: string; info: Session.In
         output: 0,
         reasoning: 0,
       },
+      context: {
+        tokens: 0,
+        percentage: null as number | null,
+        compactionEvents: 0,
+        conversationLength: 0,
+        instructionTokens: 0,
+        totalUserTokens: 0,
+        totalAssistantTokens: 0,
+      },
     }
 
     if (!store.info) return result
@@ -292,6 +301,60 @@ export default function Share(props: { id: string; api: string; info: Session.In
         }
       }
     }
+
+    // Calculate context tokens from the last assistant message
+    const last = msgs.findLast((x) => x.role === "assistant" && x.tokens.output > 0)
+    if (last) {
+      const total =
+        last.tokens.input +
+        last.tokens.output +
+        last.tokens.reasoning +
+        last.tokens.cache.read +
+        last.tokens.cache.write
+
+      // Count compaction events (summary messages)
+      result.context.compactionEvents = msgs.filter((x) => x.role === "assistant" && x.summary).length
+
+      // Get the actual system prompt content that was used
+      const systemPromptContent = last.system?.join("") || ""
+
+      // Count characters in system prompt (rough estimate: ~4 chars per token)
+      const systemPromptChars = systemPromptContent.length
+      const estimatedSystemTokens = Math.round(systemPromptChars / 4)
+
+      // Calculate conversation length (total minus instruction tokens)
+      result.context.conversationLength = Math.max(0, total - estimatedSystemTokens)
+      result.context.instructionTokens = estimatedSystemTokens
+      result.context.tokens = total
+
+      // Calculate user and assistant tokens based on character proportions
+      let totalUserChars = 0
+      let totalAssistantChars = 0
+
+      msgs.forEach((msg) => {
+        if (msg.role === "user") {
+          msg.parts?.forEach((part) => {
+            if (part.type === "text") {
+              totalUserChars += part.text?.length || 0
+            }
+          })
+        } else if (msg.role === "assistant") {
+          msg.parts?.forEach((part) => {
+            if (part.type === "text") {
+              totalAssistantChars += part.text?.length || 0
+            }
+          })
+        }
+      })
+
+      const totalConversationChars = totalUserChars + totalAssistantChars
+      const userTokenRatio = totalConversationChars > 0 ? totalUserChars / totalConversationChars : 0
+      const assistantTokenRatio = totalConversationChars > 0 ? totalAssistantChars / totalConversationChars : 0
+
+      result.context.totalUserTokens = Math.round(result.context.conversationLength * userTokenRatio)
+      result.context.totalAssistantTokens = Math.round(result.context.conversationLength * assistantTokenRatio)
+    }
+
     return result
   })
 
@@ -420,6 +483,54 @@ export default function Share(props: { id: string; api: string; info: Session.In
                       <span data-element-label>Reasoning Tokens</span>
                       {data().tokens.reasoning ? (
                         <span>{data().tokens.reasoning}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>Context Tokens</span>
+                      {data().context.tokens ? (
+                        <span>{data().context.tokens.toLocaleString()}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>Compaction Events</span>
+                      {data().context.compactionEvents ? (
+                        <span>{data().context.compactionEvents}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>Conversation Length</span>
+                      {data().context.conversationLength ? (
+                        <span>{data().context.conversationLength.toLocaleString()}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>Instruction Tokens</span>
+                      {data().context.instructionTokens ? (
+                        <span>{data().context.instructionTokens.toLocaleString()}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>User Tokens</span>
+                      {data().context.totalUserTokens ? (
+                        <span>{data().context.totalUserTokens.toLocaleString()}</span>
+                      ) : (
+                        <span data-placeholder>&mdash;</span>
+                      )}
+                    </li>
+                    <li>
+                      <span data-element-label>Assistant Tokens</span>
+                      {data().context.totalAssistantTokens ? (
+                        <span>{data().context.totalAssistantTokens.toLocaleString()}</span>
                       ) : (
                         <span data-placeholder>&mdash;</span>
                       )}
