@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare PR scan payload
+        id: prep
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
@@ -55,13 +56,14 @@ jobs:
           $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
           if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
           if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          $scanRoot = (Get-Content $env:GITHUB_OUTPUT | Select-String '^scan_root=' | ForEach-Object { $_.ToString().Split('=')[1] })[-1]
+          $scanRoot = "${{ steps.prep.outputs.scan_root }}"
+          if (-not $scanRoot) { throw 'scan_root output missing from prep step' }
           & $mp -Scan -ScanType 3 -File $scanRoot
       - name: Collect Defender detections (PR)
         shell: pwsh
         run: |
           $since = (Get-Date).AddMinutes(-30)
-          $scanRoot = (Get-Content $env:GITHUB_OUTPUT | Select-String '^scan_root=' | ForEach-Object { $_.ToString().Split('=')[1] })[-1]
+          $scanRoot = "${{ steps.prep.outputs.scan_root }}"
           $re = [Regex]::Escape($scanRoot)
           $recent = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since -and $_.Resources -and ($_.Resources.Resource -match $re) }
           if ($recent) {
