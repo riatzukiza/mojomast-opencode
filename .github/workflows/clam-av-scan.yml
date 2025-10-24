@@ -1,6 +1,10 @@
 name: av-clamav
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to scan (e.g., v0.15.16)'
+        required: false
   release:
     types: [published]
   pull_request:
@@ -12,6 +16,7 @@ permissions:
 
 jobs:
   clamav-scan:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     name: ClamAV scan (release assets)
     runs-on: ubuntu-latest
     permissions:
@@ -23,12 +28,23 @@ jobs:
           sudo apt-get install -y clamav
           sudo freshclam || true
 
+      - name: Resolve release tag
+        id: resolve_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "$tag" ]; then tag="${{ github.event.inputs.tag }}"; fi
+          if [ -z "$tag" ]; then tag="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"; fi
+          if [ -z "$tag" ]; then echo "No release tag found" >&2; exit 1; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Download assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist-release
-          gh release download "${{ github.event.release.tag_name }}" --dir dist-release --clobber
+          gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
 
       - name: Scan with ClamAV
         run: |

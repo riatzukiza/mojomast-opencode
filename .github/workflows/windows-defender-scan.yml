@@ -1,6 +1,10 @@
 name: av-windows-defender
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to scan (e.g., v0.15.16)'
+        required: false
   release:
     types: [published]
   pull_request:
@@ -13,6 +17,7 @@ permissions:
 
 jobs:
   defender-scan:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     name: Windows Defender scan (release assets)
     runs-on: windows-latest
     permissions:
@@ -23,41 +28,51 @@ jobs:
         shell: pwsh
         run: New-Item -ItemType Directory -Force -Path dist-release | Out-Null
 
+      - name: Resolve release tag
+        id: resolve_tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          if (-not $tag) { $tag = "${{ github.event.inputs.tag }}" }
+          if (-not $tag) { $tag = (gh release list --limit 1 --json tagName -q ".[0].tagName") }
+          if (-not $tag) { throw 'No release tag found' }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
       - name: Download assets for this release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if (-not "${{ github.event.release.tag_name }}") {
-            throw "This workflow requires a release context or manual tag input."
-          }
-          gh release download "${{ github.event.release.tag_name }}" --dir dist-release --clobber
+          gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
 
       - name: List assets
         shell: pwsh
-        run: Get-ChildItem -File dist-release | Select-Object FullName, Length | Format-Table | Out-String | Tee-Object -FilePath dist-release\\asset-list.txt
+        run: Get-ChildItem -File dist-release | Select-Object FullName, Length | Format-Table | Out-String | Tee-Object -FilePath dist-release\asset-list.txt
 
       - name: Scan each asset with Defender
         shell: pwsh
         run: |
-          $mp = "$env:ProgramFiles\\Windows Defender\\MpCmdRun.exe"
-          $detections = @()
+          $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
+          if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
+          if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
           Get-ChildItem -File dist-release | ForEach-Object {
             Write-Host "Scanning $($_.FullName)"
             & $mp -Scan -ScanType 3 -File $_.FullName
             Start-Sleep -Seconds 3
           }
-          # Collect *recent* detections (last 30 minutes) and only for our folder
+          # Collect recent detections (last 30 minutes) and only for our folder
           $since = (Get-Date).AddMinutes(-30)
           $recent = Get-MpThreatDetection | Where-Object {
             $_.InitialDetectionTime -ge $since -and
             $_.Resources -and ($_.Resources.Resource -match [Regex]::Escape((Resolve-Path "dist-release").Path))
           }
           if ($recent) {
-            $recent | ConvertTo-Json -Depth 5 | Out-File dist-release\\defender-detections.json -Encoding UTF8
+            $recent | ConvertTo-Json -Depth 5 | Out-File dist-release\defender-detections.json -Encoding UTF8
             Write-Error "Windows Defender found detections. See artifact."
           } else {
-            '{"status":"clean"}' | Out-File dist-release\\defender-detections.json -Encoding UTF8
+            '{"status":"clean"}' | Out-File dist-release\defender-detections.json -Encoding UTF8
           }
 
       - name: Upload scan results
