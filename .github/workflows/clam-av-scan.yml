@@ -1,20 +1,12 @@
 name: av-clamav-release
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Git tag to build and scan (e.g., v0.15.16)'
-        required: false
   release:
     types: [published]
 
 permissions:
   contents: read
   actions: read
-
-defaults:
-  run:
-    shell: bash
 
 jobs:
   clamav-release:
@@ -25,53 +17,32 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
-      - name: Checkout (manual or default)
+      - name: Checkout (manual/default)
         if: github.event_name != 'release'
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
-
-      - name: Verify Bun
-        run: bun --version
-
-      - name: Install dependencies (Bun)
-        run: bun install --frozen-lockfile || bun install
-
-      - name: Build (Bun)
-        run: bun run build
-
-      - name: Package build outputs
-        run: |
-          set -e
-          rm -rf dist-pr/payload
-          mkdir -p dist-pr/payload
-          [ -d dist ] && cp -a dist/. dist-pr/payload/ || true
-          [ -d build ] && cp -a build/. dist-pr/payload/ || true
-          if [ -z "$(ls -A dist-pr/payload 2>/dev/null)" ]; then
-            rsync -a --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ dist-pr/payload/
-          fi
-          tar -czf dist-pr/scan.tgz -C dist-pr/payload .
-          ls -lh dist-pr/scan.tgz
+      - name: Build and package
+        id: build
+        uses: ./.github/actions/build-package
 
       - name: Install & update ClamAV DB
         run: |
           set -e
           sudo apt-get update
-          sudo apt-get install -y clamav clamav-freshclam
+          sudo apt-get install -y clamav clamav-freshclam unzip
           sudo systemctl stop clamav-freshclam || true
           sudo mkdir -p /var/lib/clamav
           sudo chown -R clamav:clamav /var/lib/clamav
           sudo freshclam --verbose
           ls -lh /var/lib/clamav
 
-      - name: ClamAV scan (extract and scan all files)
+      - name: Extract bundle and scan
         run: |
           set -e
-          mkdir -p dist-pr/extracted
-          tar -xzf dist-pr/scan.tgz -C dist-pr/extracted
-          echo 'File count in payload: '$(find dist-pr/extracted -type f | wc -l)
-          clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav.log
+          rm -rf dist-release/extracted && mkdir -p dist-release/extracted
+          unzip -q bundle/opencode.zip -d dist-release/extracted
+          echo "File count in payload: $(find dist-release/extracted -type f | wc -l)"
+          clamscan -ri --scan-archive=yes dist-release/extracted | tee clamav.log
           ! grep -q 'Infected files: [1-9]' clamav.log
 
       - name: Upload scan results
@@ -80,4 +51,4 @@ jobs:
           name: clamav-release-scan-results
           path: |
             clamav.log
-            dist-pr/scan.tgz
+            bundle/opencode.zip
