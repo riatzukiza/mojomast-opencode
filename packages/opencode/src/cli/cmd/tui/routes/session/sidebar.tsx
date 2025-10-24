@@ -32,9 +32,10 @@ export function Sidebar(props: { sessionID: string }) {
   const context = createMemo(() => {
     const list = messages() as TokenMessage[]
     const last: TokenMessage | undefined = list.findLast((msg) => msg.role === "assistant" && msg.tokens.output > 0)
-    const model = last
-      ? sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
-      : undefined
+    const model =
+      last && last.providerID && last.modelID
+        ? sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
+        : undefined
     const summary = summarizeContext({
       messages: list,
       partsFor: (id) => sync.data.part[id] ?? [],
