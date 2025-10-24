@@ -30,7 +30,9 @@ jobs:
             depcheck-data-${{ runner.os }}-
 
       - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@v4.1.3
+        uses: dependency-check/Dependency-Check_Action@1.1.0
+        env:
+          JAVA_HOME: /opt/jdk
         with:
           project: "OpenCode"
           path: "."
