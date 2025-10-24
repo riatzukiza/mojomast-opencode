@@ -25,12 +25,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
-          $zip = 'dist-pr\scan.zip'
-          if (Test-Path $zip) {
-            for ($i=0; $i -lt 10; $i++) {
-              try { Remove-Item -Force $zip; break } catch { Start-Sleep -Seconds 2 }
-            }
-          }
+          $zip = Join-Path 'dist-pr' ("scan_" + $env:GITHUB_RUN_ID + '_' + $env:GITHUB_RUN_ATTEMPT + '.zip')
           $src =
             if (Test-Path dist) { 'dist\*' }
             elseif (Test-Path build) { 'build\*' }
@@ -42,12 +37,13 @@ jobs:
           $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
           if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
           if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          & $mp -Scan -ScanType 3 -File (Resolve-Path 'dist-pr\scan.zip')
-      - name: Upload PR scan results
+          $zip = Get-ChildItem -File 'dist-pr\*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          & $mp -Scan -ScanType 3 -File $zip.FullName
+      - name: Upload PR scan payload
         uses: actions/upload-artifact@v4
         with:
           name: defender-pr-scan-input
-          path: dist-pr/scan.zip
+          path: dist-pr/*.zip
 
   defender-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'

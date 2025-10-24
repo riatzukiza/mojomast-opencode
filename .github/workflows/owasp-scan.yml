@@ -20,7 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Cache DC data to speed up runs
       - name: Cache dependency-check data
         uses: actions/cache@v4
         with:
@@ -36,9 +35,8 @@ jobs:
         with:
           project: "OpenCode"
           path: "."
-          format: "HTML,JSON"
-          out: "dependency-check-report"
-          # optionally: args: "--enableRetired"
+          format: ALL
+          args: "--out dependency-check-report"
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
