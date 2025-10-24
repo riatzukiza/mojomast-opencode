@@ -8,14 +8,39 @@ on:
   release:
     types: [published]
   pull_request:
-    branches: [dev]
+  push:
   schedule:
-    - cron: "0 4 * * 1" # weekly, 04:00 UTC Mondays
+    - cron: "0 4 * * 1"
 
 permissions:
   contents: read
 
 jobs:
+  defender-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare PR scan payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
+          if (Test-Path dist) { Compress-Archive -Path dist\* -DestinationPath dist-pr\scan.zip -Force }
+          elseif (Test-Path build) { Compress-Archive -Path build\* -DestinationPath dist-pr\scan.zip -Force }
+          else { Compress-Archive -Path * -DestinationPath dist-pr\scan.zip -Force }
+      - name: Windows Defender scan (PR)
+        shell: pwsh
+        run: |
+          $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
+          if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
+          if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
+          & $mp -Scan -ScanType 3 -File (Resolve-Path 'dist-pr\scan.zip')
+      - name: Upload PR scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: defender-pr-scan-input
+          path: dist-pr/scan.zip
+
   defender-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     name: Windows Defender scan (release assets)
@@ -27,7 +52,6 @@ jobs:
       - name: Prepare download dir
         shell: pwsh
         run: New-Item -ItemType Directory -Force -Path dist-release | Out-Null
-
       - name: Resolve release tag
         id: resolve_tag
         shell: pwsh
@@ -39,18 +63,15 @@ jobs:
           if (-not $tag) { $tag = (gh release list --limit 1 --json tagName -q ".[0].tagName") }
           if (-not $tag) { throw 'No release tag found' }
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
       - name: Download assets for this release
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
-
       - name: List assets
         shell: pwsh
         run: Get-ChildItem -File dist-release | Select-Object FullName, Length | Format-Table | Out-String | Tee-Object -FilePath dist-release\asset-list.txt
-
       - name: Scan each asset with Defender
         shell: pwsh
         run: |
@@ -62,7 +83,6 @@ jobs:
             & $mp -Scan -ScanType 3 -File $_.FullName
             Start-Sleep -Seconds 3
           }
-          # Collect recent detections (last 30 minutes) and only for our folder
           $since = (Get-Date).AddMinutes(-30)
           $recent = Get-MpThreatDetection | Where-Object {
             $_.InitialDetectionTime -ge $since -and
@@ -72,9 +92,8 @@ jobs:
             $recent | ConvertTo-Json -Depth 5 | Out-File dist-release\defender-detections.json -Encoding UTF8
             Write-Error "Windows Defender found detections. See artifact."
           } else {
-            '{"status":"clean"}' | Out-File dist-release\defender-detections.json -Encoding UTF8
+            '{\"status\":\"clean\"}' | Out-File dist-release\defender-detections.json -Encoding UTF8
           }
-
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
