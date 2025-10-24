@@ -1,0 +1,62 @@
+name: av-windows-defender
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  defender-scan:
+    name: Windows Defender scan (release assets)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Prepare download dir
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path dist-release | Out-Null
+
+      - name: Download assets for this release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (-not "${{ github.event.release.tag_name }}") {
+            throw "This workflow requires a release context or manual tag input."
+          }
+          gh release download "${{ github.event.release.tag_name }}" --dir dist-release --clobber
+
+      - name: List assets
+        shell: pwsh
+        run: Get-ChildItem -File dist-release | Select-Object FullName, Length | Format-Table | Out-String | Tee-Object -FilePath dist-release\\asset-list.txt
+
+      - name: Scan each asset with Defender
+        shell: pwsh
+        run: |
+          $mp = "$env:ProgramFiles\\Windows Defender\\MpCmdRun.exe"
+          $detections = @()
+          Get-ChildItem -File dist-release | ForEach-Object {
+            Write-Host "Scanning $($_.FullName)"
+            & $mp -Scan -ScanType 3 -File $_.FullName
+            Start-Sleep -Seconds 3
+          }
+          # Collect *recent* detections (last 30 minutes) and only for our folder
+          $since = (Get-Date).AddMinutes(-30)
+          $recent = Get-MpThreatDetection | Where-Object {
+            $_.InitialDetectionTime -ge $since -and
+            $_.Resources -and ($_.Resources.Resource -match [Regex]::Escape((Resolve-Path "dist-release").Path))
+          }
+          if ($recent) {
+            $recent | ConvertTo-Json -Depth 5 | Out-File dist-release\\defender-detections.json -Encoding UTF8
+            Write-Error "Windows Defender found detections. See artifact."
+          } else {
+            '{"status":"clean"}' | Out-File dist-release\\defender-detections.json -Encoding UTF8
+          }
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: defender-scan-results
+          path: |
+            dist-release/asset-list.txt
+            dist-release/defender-detections.json
