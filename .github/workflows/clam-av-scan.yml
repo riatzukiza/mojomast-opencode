@@ -24,6 +24,7 @@ jobs:
       - name: Detect repo meta
         id: meta
         run: |
+          echo "has_bun_lock=$([ -f bun.lockb ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "has_package_json=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "has_pnpm_lock=$([ -f pnpm-lock.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "has_yarn_lock=$([ -f yarn.lock ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -31,37 +32,56 @@ jobs:
           echo "has_cargo=$([ -n \"$(git ls-files | grep -E '(^|/)Cargo.toml$')\" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "has_go=$([ -f go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+      # --- JavaScript path (Bun/Node) ---
+      - name: Setup Bun
+        if: steps.meta.outputs.has_bun_lock == 'true'
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: '1.x'
+
       - name: Setup Node
-        if: steps.meta.outputs.has_package_json == 'true'
+        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Enable Corepack (Node)
-        if: steps.meta.outputs.has_package_json == 'true'
+        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         run: |
           npm i -g corepack || true
           corepack enable || true
           if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then corepack prepare yarn@stable --activate || true; fi
 
       - name: Setup pnpm
-        if: steps.meta.outputs.has_pnpm_lock == 'true'
+        if: steps.meta.outputs.has_pnpm_lock == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
+      - name: Install deps (Bun)
+        if: steps.meta.outputs.has_bun_lock == 'true'
+        run: |
+          bun --version
+          bun install --frozen-lockfile || bun install || true
+
+      - name: Build (Bun)
+        if: steps.meta.outputs.has_bun_lock == 'true'
+        run: |
+          bun run build || true
+
       - name: Install deps (Node)
-        if: steps.meta.outputs.has_package_json == 'true'
+        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         run: |
           if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install || true; fi
           if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i || true; fi
           if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then (yarn --version || true) && (yarn install --frozen-lockfile || yarn install || true); fi
 
       - name: Build (Node)
-        if: steps.meta.outputs.has_package_json == 'true'
+        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
         run: |
           pnpm run -c build || pnpm -r build || pnpm -w build || npm run build || yarn build || true
 
+      # --- Rust path ---
       - name: Setup Rust
         if: steps.meta.outputs.has_cargo == 'true'
         uses: dtolnay/rust-toolchain@stable
@@ -70,6 +90,7 @@ jobs:
         if: steps.meta.outputs.has_cargo == 'true'
         run: cargo build --release || true
 
+      # --- Go path ---
       - name: Setup Go
         if: steps.meta.outputs.has_go == 'true'
         uses: actions/setup-go@v5
