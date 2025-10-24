@@ -26,27 +26,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Detect repo meta
+      - name: Detect repo meta (Bun/Node/Rust/Go)
         id: meta
         run: |
-          echo "has_bun_lock=$([ -f bun.lockb ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_package_json=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_pnpm_lock=$([ -f pnpm-lock.yaml ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_yarn_lock=$([ -f yarn.lock ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_package_lock=$([ -f package-lock.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_cargo=$([ -n \"$(git ls-files | grep -E '(^|/)Cargo.toml$')\" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "has_go=$([ -f go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          set -e
+          # search across tracked files anywhere in the repo
+          has_file() { git ls-files -z | tr '\0' '\n' | grep -qE "$1" && echo true || echo false; }
+          echo "has_bun=$(has_file '(^|/)bun\.lockb$')" >> "$GITHUB_OUTPUT"
+          echo "has_node=$(has_file '(^|/)package\.json$')" >> "$GITHUB_OUTPUT"
+          echo "has_pnpm_lock=$(has_file '(^|/)pnpm-lock\.yaml$')" >> "$GITHUB_OUTPUT"
+          echo "has_yarn_lock=$(has_file '(^|/)yarn\.lock$')" >> "$GITHUB_OUTPUT"
+          echo "has_package_lock=$(has_file '(^|/)package-lock\.json$')" >> "$GITHUB_OUTPUT"
+          echo "has_rust=$(has_file '(^|/)Cargo\.toml$')" >> "$GITHUB_OUTPUT"
+          echo "has_go=$(has_file '(^|/)go\.mod$')" >> "$GITHUB_OUTPUT"
 
-      # --- JavaScript path (Bun/Node) ---
-      - name: Setup Bun (no external action)
-        if: steps.meta.outputs.has_bun_lock == 'true'
+      - name: Dump meta detection
+        run: |
+          echo "bun=${{ steps.meta.outputs.has_bun }} node=${{ steps.meta.outputs.has_node }} pnpm=${{ steps.meta.outputs.has_pnpm_lock }} yarn=${{ steps.meta.outputs.has_yarn_lock }} npm_lock=${{ steps.meta.outputs.has_package_lock }} rust=${{ steps.meta.outputs.has_rust }} go=${{ steps.meta.outputs.has_go }}"
+
+      # --- JavaScript path (prefer Bun if present) ---
+      - name: Setup Bun
+        if: steps.meta.outputs.has_bun == 'true'
         run: |
           curl -fsSL https://bun.sh/install | bash
           echo "$HOME/.bun/bin" >> $GITHUB_PATH
           bun --version
 
-      - name: Setup Node via corepack (fallback when not Bun)
-        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
+      - name: Install deps (Bun)
+        if: steps.meta.outputs.has_bun == 'true'
+        run: |
+          bun install --frozen-lockfile || bun install || true
+
+      - name: Build (Bun)
+        if: steps.meta.outputs.has_bun == 'true'
+        run: |
+          bun run build || true
+
+      - name: Setup Node via corepack (only when Bun not detected)
+        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y nodejs npm || true
@@ -57,41 +74,31 @@ jobs:
           node -v || true
           corepack -v || true
 
-      - name: Install deps (Bun)
-        if: steps.meta.outputs.has_bun_lock == 'true'
-        run: |
-          bun install --frozen-lockfile || bun install || true
-
-      - name: Build (Bun)
-        if: steps.meta.outputs.has_bun_lock == 'true'
-        run: |
-          bun run build || true
-
       - name: Install deps (Node)
-        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
+        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
         run: |
           if [ "${{ steps.meta.outputs.has_pnpm_lock }}" = "true" ]; then pnpm install --frozen-lockfile || pnpm install || true; fi
           if [ "${{ steps.meta.outputs.has_package_lock }}" = "true" ]; then npm ci || npm i || true; fi
           if [ "${{ steps.meta.outputs.has_yarn_lock }}" = "true" ]; then (yarn --version || true) && (yarn install --frozen-lockfile || yarn install || true); fi
 
       - name: Build (Node)
-        if: steps.meta.outputs.has_package_json == 'true' && steps.meta.outputs.has_bun_lock != 'true'
+        if: steps.meta.outputs.has_node == 'true' && steps.meta.outputs.has_bun != 'true'
         run: |
           pnpm run -c build || pnpm -r build || pnpm -w build || npm run build || yarn build || true
 
-      # --- Rust path (no external action) ---
+      # --- Rust path ---
       - name: Setup Rust (rustup)
-        if: steps.meta.outputs.has_cargo == 'true'
+        if: steps.meta.outputs.has_rust == 'true'
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           rustc --version || true
 
       - name: Build (Rust)
-        if: steps.meta.outputs.has_cargo == 'true'
+        if: steps.meta.outputs.has_rust == 'true'
         run: cargo build --release || true
 
-      # --- Go path (first-party action ok) ---
+      # --- Go path ---
       - name: Setup Go
         if: steps.meta.outputs.has_go == 'true'
         uses: actions/setup-go@v5
@@ -111,12 +118,16 @@ jobs:
       - name: Package build outputs
         run: |
           set -e
-          mkdir -p dist-pr
-          if [ -d dist ]; then tar -czf dist-pr/scan.tgz -C dist .
-          elif [ -d build ]; then tar -czf dist-pr/scan.tgz -C build .
-          elif [ -d target/release ]; then tar -czf dist-pr/scan.tgz -C target/release .
-          else tar -czf dist-pr/scan.tgz --exclude=.git --exclude=.github .
+          rm -rf dist-pr/payload
+          mkdir -p dist-pr/payload
+          [ -d dist ] && cp -a dist/. dist-pr/payload/ || true
+          [ -d build ] && cp -a build/. dist-pr/payload/ || true
+          [ -d target/release ] && cp -a target/release/. dist-pr/payload/ || true
+          if [ -z "$(ls -A dist-pr/payload 2>/dev/null)" ]; then
+            rsync -a --exclude '.git' --exclude '.github' ./ dist-pr/payload/
           fi
+          tar -czf dist-pr/scan.tgz -C dist-pr/payload .
+          ls -lh dist-pr/scan.tgz
 
       - name: Install & update ClamAV DB
         run: |
@@ -129,9 +140,13 @@ jobs:
           sudo freshclam --verbose
           ls -lh /var/lib/clamav
 
-      - name: ClamAV scan (PR)
+      - name: ClamAV scan (extract and scan all files)
         run: |
-          clamscan -ri --scan-archive=yes dist-pr | tee clamav-pr.log
+          set -e
+          mkdir -p dist-pr/extracted
+          tar -xzf dist-pr/scan.tgz -C dist-pr/extracted
+          echo "File count in payload: $(find dist-pr/extracted -type f | wc -l)"
+          clamscan -ri --scan-archive=yes dist-pr/extracted | tee clamav-pr.log
           ! grep -q 'Infected files: [1-9]' clamav-pr.log
 
       - name: Upload PR scan results
@@ -180,7 +195,7 @@ jobs:
 
       - name: Scan with ClamAV (release assets)
         run: |
-          clamscan -ri dist-release | tee clamav.log
+          clamscan -ri --scan-archive=yes dist-release | tee clamav.log
           ! grep -q 'Infected files: [1-9]' clamav.log
 
       - name: Upload scan results
