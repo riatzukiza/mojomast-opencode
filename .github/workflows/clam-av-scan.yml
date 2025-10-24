@@ -1,23 +1,46 @@
 name: av-clamav
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag to scan (e.g., v0.15.16)'
-        required: false
   release:
     types: [published]
   pull_request:
-    branches: [dev]
+  push:
   schedule:
-    - cron: "0 3 * * 1" # weekly, 03:00 UTC Mondays
+    - cron: "0 3 * * 1"
 permissions:
   contents: read
 
 jobs:
+  clamav-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ClamAV
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav
+          sudo freshclam || true
+      - name: Prepare PR scan payload
+        run: |
+          mkdir -p dist-pr
+          if [ -d dist ]; then tar -czf dist-pr/scan.tgz -C dist .; \
+          elif [ -d build ]; then tar -czf dist-pr/scan.tgz -C build .; \
+          else tar -czf dist-pr/scan.tgz --exclude=.git --exclude=.github .; fi
+      - name: ClamAV scan (PR)
+        run: |
+          clamscan -ri --scan-archive=yes dist-pr | tee clamav-pr.log
+          ! grep -q "Infected files: [1-9]" clamav-pr.log
+      - name: Upload PR scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clamav-pr-scan-results
+          path: |
+            clamav-pr.log
+            dist-pr/scan.tgz
+
   clamav-scan:
     if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-    name: ClamAV scan (release assets)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,7 +50,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clamav
           sudo freshclam || true
-
       - name: Resolve release tag
         id: resolve_tag
         env:
@@ -38,20 +60,16 @@ jobs:
           if [ -z "$tag" ]; then tag="$(gh release list --limit 1 --json tagName -q '.[0].tagName')"; fi
           if [ -z "$tag" ]; then echo "No release tag found" >&2; exit 1; fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
       - name: Download assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p dist-release
           gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
-
-      - name: Scan with ClamAV
+      - name: Scan with ClamAV (release assets)
         run: |
           clamscan -ri dist-release | tee clamav.log
-          # Fail if infected found
           ! grep -q "Infected files: [1-9]" clamav.log
-
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
