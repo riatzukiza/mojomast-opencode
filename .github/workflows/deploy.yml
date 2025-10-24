@@ -1,11 +1,11 @@
 name: deploy
 
 on:
-  push:
-    branches:
-      - dev
-      - production
   workflow_dispatch:
+  release:
+    types: [published]
+  pull_request:
+    branches: [dev]
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 

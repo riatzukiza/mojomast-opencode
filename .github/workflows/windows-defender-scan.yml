@@ -3,6 +3,13 @@ on:
   workflow_dispatch:
   release:
     types: [published]
+  pull_request:
+    branches: [dev]
+  schedule:
+    - cron: "0 4 * * 1" # weekly, 04:00 UTC Mondays
+
+permissions:
+  contents: read
 
 jobs:
   defender-scan:
