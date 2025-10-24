@@ -1,140 +1,66 @@
 name: av-windows-defender
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag to scan (e.g., v0.15.16)'
-        required: false
+  pull_request:
   release:
     types: [published]
-  pull_request:
-    branches: [dev]
-  schedule:
-    - cron: "0 4 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  defender-pr:
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
-    runs-on: windows-latest
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Prepare PR scan payload
-        id: prep
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
-          $zipName = "scan_$env:GITHUB_RUN_ID`_$env:GITHUB_RUN_ATTEMPT.zip"
-          $zip = Join-Path (Resolve-Path 'dist-pr') $zipName
-          $srcRoot = if (Test-Path dist) { 'dist' } elseif (Test-Path build) { 'build' } else { '.' }
-          $scanRoot = (Resolve-Path $srcRoot).Path
-          $tempZip = Join-Path $env:RUNNER_TEMP ("scan_" + [guid]::NewGuid().ToString() + ".zip")
-          function Invoke-WithRetry([scriptblock]$Script, [int]$Attempts = 10, [int]$Delay = 2) {
-            for ($i=1; $i -le $Attempts; $i++) {
-              try { & $Script; return } catch { if ($i -eq $Attempts) { throw }; Start-Sleep -Seconds $Delay }
-            }
-          }
-          # Create the zip in temp using bsdtar (avoids Compress-Archive locking issues)
-          Invoke-WithRetry {
-            if (Test-Path $tempZip) { Remove-Item -Force $tempZip }
-            if ($srcRoot -eq '.') {
-              tar -a -c -f $tempZip --exclude=.git --exclude=.github *
-            } else {
-              tar -a -c -f $tempZip -C $srcRoot .
-            }
-          }
-          # Move into working dir with retries in case Defender holds the handle
-          Invoke-WithRetry { Move-Item -Force $tempZip $zip }
-          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "scan_root=$scanRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Created payload: $zip | scan_root: $scanRoot"
-      - name: Windows Defender scan (PR; scan directory to avoid archive skip)
-        shell: pwsh
-        run: |
-          $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
-          if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
-          if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          $scanRoot = "${{ steps.prep.outputs.scan_root }}"
-          if (-not $scanRoot) { throw 'scan_root output missing from prep step' }
-          & $mp -Scan -ScanType 3 -File $scanRoot
-      - name: Collect Defender detections (PR)
-        shell: pwsh
-        run: |
-          $since = (Get-Date).AddMinutes(-30)
-          $scanRoot = "${{ steps.prep.outputs.scan_root }}"
-          $re = [Regex]::Escape($scanRoot)
-          $recent = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since -and $_.Resources -and ($_.Resources.Resource -match $re) }
-          if ($recent) {
-            $recent | ConvertTo-Json -Depth 5 | Out-File dist-pr\defender-pr-detections.json -Encoding UTF8
-            Write-Host 'Detections found.'
-          } else { '{"status":"clean"}' | Out-File dist-pr\defender-pr-detections.json -Encoding UTF8 }
-      - name: Upload PR scan payload & results
+      - name: Checkout (release tag)
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Checkout (PR/default)
+        if: github.event_name != 'release'
+        uses: actions/checkout@v4
+      - name: Build and package
+        uses: ./.github/actions/build-package
+      - name: Upload build bundle
         uses: actions/upload-artifact@v4
         with:
-          name: defender-pr-results
-          path: |
-            dist-pr/*.zip
-            dist-pr/defender-pr-detections.json
+          name: opencode-bundle
+          path: bundle/opencode.zip
 
-  defender-scan:
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-    name: Windows Defender scan (release assets)
+  defender:
+    needs: build
     runs-on: windows-latest
-    permissions:
-      contents: read
-      actions: read
     steps:
-      - name: Prepare download dir
+      - name: Download build bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: opencode-bundle
+          path: bundle
+      - name: Prepare scan dir
         shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path dist-release | Out-Null
-      - name: Resolve release tag
-        id: resolve_tag
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "${{ github.event.release.tag_name }}"
-          if (-not $tag) { $tag = "${{ github.event.inputs.tag }}" }
-          if (-not $tag) { $tag = (gh release list --limit 1 --json tagName -q ".[0].tagName") }
-          if (-not $tag) { throw 'No release tag found' }
-          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-      - name: Download assets for this release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release download "${{ steps.resolve_tag.outputs.tag }}" --dir dist-release --clobber
-      - name: List assets
-        shell: pwsh
-        run: Get-ChildItem -File dist-release | Select-Object FullName, Length | Format-Table | Out-String | Tee-Object -FilePath dist-release\asset-list.txt
-      - name: Scan each asset with Defender
+          New-Item -ItemType Directory -Force -Path scan | Out-Null
+          Expand-Archive -Path bundle/opencode.zip -DestinationPath scan -Force
+      - name: Windows Defender scan (directory)
         shell: pwsh
         run: |
           $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue).Source
           if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
           if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          Get-ChildItem -File dist-release | ForEach-Object {
-            Write-Host "Scanning $($_.FullName)"
-            & $mp -Scan -ScanType 3 -File $_.FullName
-            Start-Sleep -Seconds 3
-          }
+          & $mp -Scan -ScanType 3 -File (Resolve-Path 'scan')
+      - name: Collect Defender detections
+        shell: pwsh
+        run: |
           $since = (Get-Date).AddMinutes(-30)
-          $recent = Get-MpThreatDetection | Where-Object {
-            $_.InitialDetectionTime -ge $since -and
-            $_.Resources -and ($_.Resources.Resource -match [Regex]::Escape((Resolve-Path "dist-release").Path))
-          }
+          $re = [Regex]::Escape((Resolve-Path 'scan').Path)
+          $recent = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since -and $_.Resources -and ($_.Resources.Resource -match $re) }
           if ($recent) {
-            $recent | ConvertTo-Json -Depth 5 | Out-File dist-release\defender-detections.json -Encoding UTF8
-            Write-Error "Windows Defender found detections. See artifact."
-          } else {
-            '{\"status\":\"clean\"}' | Out-File dist-release\defender-detections.json -Encoding UTF8
-          }
+            $recent | ConvertTo-Json -Depth 5 | Out-File defender-detections.json -Encoding UTF8
+            Write-Error 'Windows Defender found detections. See artifact.'
+          } else { '{"status":"clean"}' | Out-File defender-detections.json -Encoding UTF8 }
       - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
           name: defender-scan-results
-          path: |
-            dist-release/asset-list.txt
-            dist-release/defender-detections.json
+          path: defender-detections.json
