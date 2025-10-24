@@ -25,9 +25,17 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-pr | Out-Null
-          if (Test-Path dist) { Compress-Archive -Path dist\* -DestinationPath dist-pr\scan.zip -Force }
-          elseif (Test-Path build) { Compress-Archive -Path build\* -DestinationPath dist-pr\scan.zip -Force }
-          else { Compress-Archive -Path * -DestinationPath dist-pr\scan.zip -Force }
+          $zip = 'dist-pr\scan.zip'
+          if (Test-Path $zip) {
+            for ($i=0; $i -lt 10; $i++) {
+              try { Remove-Item -Force $zip; break } catch { Start-Sleep -Seconds 2 }
+            }
+          }
+          $src =
+            if (Test-Path dist) { 'dist\*' }
+            elseif (Test-Path build) { 'build\*' }
+            else { '*' }
+          Compress-Archive -Path $src -DestinationPath $zip -Force
       - name: Windows Defender scan (PR)
         shell: pwsh
         run: |
@@ -42,7 +50,7 @@ jobs:
           path: dist-pr/scan.zip
 
   defender-scan:
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     name: Windows Defender scan (release assets)
     runs-on: windows-latest
     permissions:
