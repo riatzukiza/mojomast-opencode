@@ -1,0 +1,59 @@
+name: av-clamav
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  clamav:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the right ref
+      - name: Checkout (release tag)
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Checkout (PR/default)
+        if: github.event_name != 'release'
+        uses: actions/checkout@v4
+
+      # Single source-of-truth build -> one file
+      - name: Build and package
+        id: build
+        uses: ./.github/actions/build-package
+
+      # Install fresh ClamAV DB
+      - name: Install & update ClamAV DB
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y clamav clamav-freshclam unzip
+          sudo systemctl stop clamav-freshclam || true
+          sudo mkdir -p /var/lib/clamav
+          sudo chown -R clamav:clamav /var/lib/clamav
+          sudo freshclam --verbose
+          ls -lh /var/lib/clamav
+
+      # Scan extracted bundle so counts reflect actual files
+      - name: Extract bundle and scan
+        run: |
+          set -e
+          rm -rf scan && mkdir -p scan
+          unzip -q bundle/opencode.zip -d scan
+          echo "File count in payload: $(find scan -type f | wc -l)"
+          clamscan -ri --scan-archive=yes scan | tee clamav.log
+          ! grep -q 'Infected files: [1-9]' clamav.log
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clamav-scan-results
+          path: |
+            clamav.log
+            bundle/opencode.zip

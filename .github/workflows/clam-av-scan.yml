@@ -1,54 +1,11 @@
-name: av-clamav-release
+name: (deprecated) av-clamav-release
+# This workflow is intentionally disabled to avoid duplication.
+# Use .github/workflows/clam-av.yml instead.
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
-  actions: read
+  workflow_call:
 
 jobs:
-  clamav-release:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (release tag)
-        if: github.event_name == 'release'
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.release.tag_name }}
-      - name: Checkout (manual/default)
-        if: github.event_name != 'release'
-        uses: actions/checkout@v4
-
-      - name: Build and package
-        id: build
-        uses: ./.github/actions/build-package
-
-      - name: Install & update ClamAV DB
-        run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get install -y clamav clamav-freshclam unzip
-          sudo systemctl stop clamav-freshclam || true
-          sudo mkdir -p /var/lib/clamav
-          sudo chown -R clamav:clamav /var/lib/clamav
-          sudo freshclam --verbose
-          ls -lh /var/lib/clamav
-
-      - name: Extract bundle and scan
-        run: |
-          set -e
-          rm -rf dist-release/extracted && mkdir -p dist-release/extracted
-          unzip -q bundle/opencode.zip -d dist-release/extracted
-          echo "File count in payload: $(find dist-release/extracted -type f | wc -l)"
-          clamscan -ri --scan-archive=yes dist-release/extracted | tee clamav.log
-          ! grep -q 'Infected files: [1-9]' clamav.log
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v4
-        with:
-          name: clamav-release-scan-results
-          path: |
-            clamav.log
-            bundle/opencode.zip
+      - run: echo 'Deprecated: use clam-av.yml'
