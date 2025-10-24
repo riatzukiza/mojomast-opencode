@@ -1,5 +1,5 @@
 name: Build and package (Bun -> single zip)
-description: Build with Bun and package a single distributable archive
+description: Build with Bun (Turbo) and package a single distributable archive
 outputs:
   archive_path:
     description: Absolute path to the archive
@@ -18,9 +18,9 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile || bun install
 
-    - name: Build
+    - name: Build (Turbo)
       shell: bash
-      run: bun run build
+      run: bunx turbo run build
 
     - name: Ensure zip is available
       shell: bash
@@ -32,8 +32,11 @@ runs:
       run: |
         set -e
         mkdir -p bundle
-        if [ -d dist ]; then SRC=dist; elif [ -d build ]; then SRC=build; else echo 'No dist/ or build/ after build. Check project build output path.' >&2; exit 1; fi
-        cd "$SRC"
-        zip -r ../bundle/opencode.zip .
-        cd - >/dev/null
+        # Prefer a top-level dist/ or build/ if produced; else package repo (minus heavy dirs)
+        if [ -d dist ]; then SRC=dist; elif [ -d build ]; then SRC=build; else SRC=.; fi
+        if [ "$SRC" = "." ]; then
+          zip -r bundle/opencode.zip . -x '.git/*' '.github/*' 'node_modules/*'
+        else
+          (cd "$SRC" && zip -r ../bundle/opencode.zip .)
+        fi
         echo "archive_path=$(pwd)/bundle/opencode.zip" >> "$GITHUB_OUTPUT"
