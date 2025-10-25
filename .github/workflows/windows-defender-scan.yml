@@ -37,29 +37,63 @@ jobs:
         with:
           name: opencode-bundle
           path: bundle
+
       - name: Prepare scan dir
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path scan | Out-Null
           Expand-Archive -Path bundle/opencode.zip -DestinationPath scan -Force
-      - name: Windows Defender scan (directory)
+
+      # NEW: robust locator + record scan start time for later filtering
+      - name: Locate MpCmdRun.exe + mark start
         shell: pwsh
         run: |
-          $mp = (Get-Command MpCmdRun.exe).Source
-          if (-not $mp) { $mp = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" }
-          if (-not (Test-Path $mp)) { throw 'MpCmdRun.exe not found' }
-          & $mp -Scan -ScanType 3 -File (Resolve-Path 'scan')
+          $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue)?.Path
+          if (-not $mp) {
+            $platformRoot = Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
+            if (Test-Path $platformRoot) {
+              $mp = Get-ChildItem $platformRoot -Recurse -Filter MpCmdRun.exe |
+                    Sort-Object LastWriteTime -Descending |
+                    Select-Object -First 1 -ExpandProperty FullName
+            }
+          }
+          if (-not $mp) { throw 'MpCmdRun.exe not found' }
+          "MPCMDRUN=$mp" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Optional but recommended: keep definitions fresh
+      - name: Update Defender signatures
+        shell: pwsh
+        run: |
+          & "$env:MPCMDRUN" -SignatureUpdate
+
+      - name: Windows Defender scan (directory)
+        id: scan
+        shell: pwsh
+        run: |
+          & "$env:MPCMDRUN" -Scan -ScanType 3 -File (Resolve-Path 'scan').Path
+
       - name: Collect Defender detections
         shell: pwsh
         run: |
-          $since = (Get-Date).AddMinutes(-30)
+          $since = [datetime]$env:DEFENDER_SINCE
           $re = [Regex]::Escape((Resolve-Path 'scan').Path)
-          $recent = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since -and $_.Resources -and ($_.Resources.Resource -match $re) }
+          $recent = Get-MpThreatDetection |
+            Where-Object {
+              $_.InitialDetectionTime -ge $since -and
+              $_.Resources -and
+              (($_.Resources.Resource) -match $re)
+            }
+
           if ($recent) {
             $recent | ConvertTo-Json -Depth 5 | Out-File defender-detections.json -Encoding UTF8
-            Write-Error 'Windows Defender found detections. See artifact.'
-          } else { '{"status":"clean"}' | Out-File defender-detections.json -Encoding UTF8 }
+            throw 'Windows Defender found detections. See artifact.'
+          } else {
+            '{"status":"clean"}' | Out-File defender-detections.json -Encoding UTF8
+          }
+
       - name: Upload scan results
+        if: ${{ always() }}            # <- ensure we always publish the JSON
         uses: actions/upload-artifact@v4
         with:
           name: defender-scan-results
