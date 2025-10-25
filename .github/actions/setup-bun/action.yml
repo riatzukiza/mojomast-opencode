@@ -13,7 +13,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.bun
-        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb', 'bun.lock') }}
+        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb', 'bun.lock') }}-${{ hashFiles('.bun-version')}}
         restore-keys: |
           ${{ runner.os }}-bun-
 
