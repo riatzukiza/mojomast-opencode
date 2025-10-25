@@ -60,6 +60,15 @@ jobs:
           "MPCMDRUN=$mp" | Out-File -FilePath $env:GITHUB_ENV -Append
           # record time BEFORE we create the EICAR file so real-time hits are captured
           "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Assert Defender status + mark start
+        shell: pwsh
+        run: |
+          $s = Get-MpComputerStatus
+          $s | Select AMRunningMode, RealTimeProtectionEnabled, IsTamperProtected, AntiVirusSignatureVersion | Format-List
+          if ($s.AMRunningMode -ne 'Normal' -or -not $s.RealTimeProtectionEnabled) {
+            throw "Defender not active (AMRunningMode=$($s.AMRunningMode), RTP=$($s.RealTimeProtectionEnabled))"
+          }
+          "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       # --- EICAR TEST FILE (runtime only; do NOT commit the string) ---
       - name: Create EICAR test file
