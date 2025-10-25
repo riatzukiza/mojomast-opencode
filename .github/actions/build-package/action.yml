@@ -1,5 +1,5 @@
 name: Build and package (Bun -> single zip)
-description: Build with Bun (Turbo) and package a single distributable archive
+description: Build with Bun 1.3.0 (Turbo) and package a single distributable archive
 outputs:
   archive_path:
     description: Absolute path to the archive
@@ -7,14 +7,10 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Setup Bun (1.3.0 for strict build script)
-      uses: ./.github/actions/setup-bun
+    - name: Setup Bun 1.3.0
+      uses: oven-sh/setup-bun@v2
       with:
         bun-version: '1.3.0'
-
-    - name: Verify Bun
-      shell: bash
-      run: bun --version
 
     - name: Install dependencies
       shell: bash
@@ -34,7 +30,6 @@ runs:
       run: |
         set -e
         mkdir -p bundle
-        # Prefer a top-level dist/ or build/ if produced; else package repo (minus heavy dirs)
         if [ -d dist ]; then SRC=dist; elif [ -d build ]; then SRC=build; else SRC=.; fi
         if [ "$SRC" = "." ]; then
           zip -r bundle/opencode.zip . -x '.git/*' '.github/*' 'node_modules/*'
