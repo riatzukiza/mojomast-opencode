@@ -28,112 +28,125 @@ jobs:
           name: opencode-bundle
           path: bundle/opencode.zip
 
-defender:
-  needs: build
-  runs-on: windows-latest
-  steps:
-    - name: Download build bundle
-      uses: actions/download-artifact@v4
-      with:
-        name: opencode-bundle
-        path: bundle
+  defender:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Download build bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: opencode-bundle
+          path: bundle
 
-    - name: Prepare scan dir
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Force -Path scan | Out-Null
-        Expand-Archive -Path bundle/opencode.zip -DestinationPath scan -Force
+      - name: Prepare scan dir
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path scan | Out-Null
+          Expand-Archive -Path bundle/opencode.zip -DestinationPath scan -Force
 
-    - name: Locate MpCmdRun.exe + assert Defender is active + mark start
-      id: envdef
-      shell: pwsh
-      run: |
-        $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue)?.Path
-        if (-not $mp) {
-          $root = Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
-          if (Test-Path $root) {
-            $mp = Get-ChildItem $root -Recurse -Filter MpCmdRun.exe |
-                  Sort-Object LastWriteTime -Descending |
-                  Select-Object -First 1 -ExpandProperty FullName
+      - name: Locate MpCmdRun.exe + assert Defender is active + mark start
+        id: envdef
+        shell: pwsh
+        run: |
+          $mp = (Get-Command MpCmdRun.exe -ErrorAction SilentlyContinue)?.Path
+          if (-not $mp) {
+            $root = Join-Path $env:ProgramData 'Microsoft\Windows Defender\Platform'
+            if (Test-Path $root) {
+              $mp = Get-ChildItem $root -Recurse -Filter MpCmdRun.exe |
+                    Sort-Object LastWriteTime -Descending |
+                    Select-Object -First 1 -ExpandProperty FullName
+            }
           }
-        }
-        if (-not $mp) { throw 'MpCmdRun.exe not found' }
-        $s = Get-MpComputerStatus
-        if ($s.AMRunningMode -ne 'Normal' -or -not $s.RealTimeProtectionEnabled) {
-          throw "Defender not active (AMRunningMode=$($s.AMRunningMode), RTP=$($s.RealTimeProtectionEnabled))"
-        }
-        "MPCMDRUN=$mp" | Out-File -FilePath $env:GITHUB_ENV -Append
-        "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          if (-not $mp) { throw 'MpCmdRun.exe not found' }
+          $s = Get-MpComputerStatus
+          if ($s.AMRunningMode -ne 'Normal' -or -not $s.RealTimeProtectionEnabled) {
+            throw "Defender not active (AMRunningMode=$($s.AMRunningMode), RTP=$($s.RealTimeProtectionEnabled))"
+          }
+          "MPCMDRUN=$mp" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-    # --- create a harmless but detectable file (EICAR) ---
-    - name: Create EICAR test file (ASCII, no newline)
-      shell: pwsh
-      run: |
-        $scan = (Resolve-Path 'scan').Path
-        $target = Join-Path $scan 'eicar.txt'
-        $p1 = 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STAND'
-        $p2 = 'ARD-ANTIVIRUS-TEST-FILE!$H+H*'
-        Set-Content -LiteralPath $target -Value ($p1+$p2) -NoNewline -Encoding Ascii
+      # --- create a harmless but detectable file (EICAR) ---
+      - name: Create EICAR test file (ASCII, no newline)
+        shell: pwsh
+        run: |
+          $scan = (Resolve-Path 'scan').Path
+          $target = Join-Path $scan 'eicar.txt'
+          $p1 = 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STAND'
+          $p2 = 'ARD-ANTIVIRUS-TEST-FILE!$H+H*'
+          Set-Content -LiteralPath $target -Value ($p1+$p2) -NoNewline -Encoding Ascii
 
-    - name: Provoke RTP (force read)
-      shell: pwsh
-      run: |
-        cmd /c type scan\eicar.txt >NUL
-        Start-Sleep -Seconds 3  # give logs a moment
+      - name: Provoke RTP (force read)
+        shell: pwsh
+        run: |
+          cmd /c type scan\eicar.txt >NUL
+          Start-Sleep -Seconds 3  # give logs a moment
 
-    # assert detection, but do NOT fail here; report via step output
-    - name: Collect detections and set output
-      id: detect
-      shell: pwsh
-      run: |
-        $since    = [datetime]$env:DEFENDER_SINCE
-        $scanPath = (Resolve-Path 'scan').Path
-        $re       = [Regex]::Escape($scanPath)
+      # assert detection, but do NOT fail here; report via step output
+      - name: Collect detections and set outputs
+        id: detect
+        shell: pwsh
+        run: |
+          $since     = [datetime]$env:DEFENDER_SINCE
+          $scanPath  = (Resolve-Path 'scan').Path
+          $eicarPath = Join-Path $scanPath 'eicar.txt'  # <-- whichever name you used
 
-        $hits = @()
+          # 1) pull threat history since our marker
+          $all = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since }
 
-        # 1) Threat history
-        $d1 = Get-MpThreatDetection | Where-Object {
-          $_.InitialDetectionTime -ge $since -and
-          ($_.ThreatName -match 'EICAR' -or ($_.Resources.Resource -match $re))
-        }
-        if ($d1) { $hits += $d1 }
+          # classifier: EICAR if ThreatName mentions EICAR OR any resource equals our eicar file path
+          function Is-Eicar($d) {
+            try {
+              if ($d.ThreatName -match 'EICAR') { return $true }
+            } catch {}
+            try {
+              if ($d.Resources -and ($d.Resources.Resource | Where-Object { $_ -ieq $eicarPath })) { return $true }
+            } catch {}
+            return $false
+          }
 
-        # 2) (Optional) Event log 1116/1117
-        try {
-          $d2 = Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Windows Defender/Operational'; StartTime=$since } |
-                Where-Object { $_.Id -in 1116,1117 }
-          if ($d2) { $hits += $d2 }
-        } catch { }  # some runners restrict this; ignore
+          $eicar = @()
+          $real  = @()
+          foreach ($d in $all) { if (Is-Eicar $d) { $eicar += $d } else { $real += $d } }
 
-        if ($hits) {
-          $hits | ForEach-Object {
-            if ($_ -is [System.Diagnostics.Eventing.Reader.EventRecord]) {
-              [pscustomobject]@{ Source='EventLog'; Id=$_.Id; TimeCreated=$_.TimeCreated; Message=$_.FormatDescription() }
-            } else { $_ }
+          # 2) (optional) also harvest Defender Operational events for context/evidence
+          $events = @()
+          try {
+            $events = Get-WinEvent -FilterHashtable @{ LogName='Microsoft-Windows-Windows Defender/Operational'; StartTime=$since } |
+                      Where-Object { $_.Id -in 1116,1117 } |
+                      ForEach-Object { [pscustomobject]@{ Id=$_.Id; TimeCreated=$_.TimeCreated; Message=$_.FormatDescription() } }
+          } catch { }
+
+          # 3) write a structured artifact
+          [pscustomobject]@{
+            since      = $since
+            eicarHits  = $eicar
+            realHits   = $real
+            eventLog   = $events
           } | ConvertTo-Json -Depth 6 | Out-File defender-detections.json -Encoding UTF8
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "detected=true"
-        } else {
-          '{"status":"no-detections"}' | Out-File defender-detections.json -Encoding UTF8
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "detected=false"
-        }
 
-    - name: Upload scan results
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: defender-detections
-        path: defender-detections.json
+          # 4) expose stable, lowercase outputs for gating
+          $eicarVerified = ($eicar.Count -gt 0)
+          $realCount     = $real.Count
+          Add-Content -Path $env:GITHUB_OUTPUT -Value ("eicar_verified=" + $eicarVerified.ToString().ToLowerInvariant())
+          Add-Content -Path $env:GITHUB_OUTPUT -Value ("real_detections=" + ([bool]($realCount -gt 0)).ToString().ToLowerInvariant())
+          Add-Content -Path $env:GITHUB_OUTPUT -Value ("real_count=" + $realCount)
 
-    # 🔴 gate: fail the job iff we did NOT observe a detection
-    - name: Fail if EICAR not detected
-      if: steps.detect.outputs.detected != 'true'
-      shell: pwsh
-      run: exit 1
+      - name: Upload scan results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: defender-detections
+          path: defender-detections.json
 
-    # (optional) now run your on-demand directory scan of the bundle
-    - name: Windows Defender scan (directory)
-      shell: pwsh
-      run: |
-        & "$env:MPCMDRUN" -SignatureUpdate
-        & "$env:MPCMDRUN" -Scan -ScanType 3 -File (Resolve-Path 'scan').Path
+      # fail if EICAR missing OR real threats present
+      - name: Fail if EICAR not detected or real detections found
+        if: steps.detect.outputs.eicar_verified != 'true' || steps.detect.outputs.real_detections == 'true'
+        shell: pwsh
+        run: exit 1
+
+      # (optional) now run your on-demand directory scan of the bundle
+      - name: Windows Defender scan (directory)
+        shell: pwsh
+        run: |
+          & "$env:MPCMDRUN" -SignatureUpdate
+          & "$env:MPCMDRUN" -Scan -ScanType 3 -File (Resolve-Path 'scan').Path
