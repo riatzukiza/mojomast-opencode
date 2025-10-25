@@ -1,37 +1,41 @@
 name: setup-bun
-description: Setup Bun and install workspace dependencies (back-compat)
+description: Setup Bun from .bun-version (or input) and install workspace deps
 inputs:
   bun-version:
-    description: Version of Bun to install (e.g., 1.3.0)
+    description: Fallback Bun version if .bun-version is absent
     required: false
     default: '1.3.0'
+outputs:
+  resolved-version:
+    description: The Bun version that was installed
+    value: ${{ steps.ver.outputs.version }}
 runs:
   using: composite
   steps:
-    - name: Restore Bun cache (strict by version)
-      id: bun-cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.bun
-        key: bun-${{ runner.os }}-${{ inputs.bun-version }}-v3
+    - name: Resolve Bun version (prefer .bun-version)
+      id: ver
+      shell: bash
+      run: |
+        if [ -f .bun-version ]; then
+          ver=$(tr -d '[:space:]' < .bun-version)
+        else
+          ver='${{ inputs.bun-version }}'
+        fi
+        echo "version=$ver" >> "$GITHUB_OUTPUT"
+        echo "Resolved Bun version: $ver"
 
-    - name: Drop cache if version mismatches
+    - name: Setup Bun (no tool-cache, exact version)
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ steps.ver.outputs.version }}
+        no-cache: true
+
+    - name: Verify Bun version
       shell: bash
       run: |
         set -e
-        REQ="${{ inputs.bun-version }}"
-        if [ -x "$HOME/.bun/bin/bun" ]; then
-          CUR="$($HOME/.bun/bin/bun --version | awk '{print $1}')"
-          if [ "$CUR" != "$REQ" ]; then
-            echo "Cached bun $CUR != requested $REQ; clearing ~/.bun"
-            rm -rf "$HOME/.bun"
-          fi
-        fi
-
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: ${{ inputs.bun-version }}
+        echo "bun version: $(bun --version)"
+        test "$(bun --version | awk '{print $1}')" = "${{ steps.ver.outputs.version }}"
 
     # Historical behavior: run bun install during setup
     - name: Install workspace dependencies
