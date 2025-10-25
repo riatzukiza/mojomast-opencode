@@ -58,10 +58,14 @@ jobs:
             }
           }
           if (-not $mp) { throw 'MpCmdRun.exe not found' }
+
+          # AFTER (works on GH runners)
           $s = Get-MpComputerStatus
-          if ($s.AMRunningMode -ne 'Normal' -or -not $s.RealTimeProtectionEnabled) {
-            throw "Defender not active (AMRunningMode=$($s.AMRunningMode), RTP=$($s.RealTimeProtectionEnabled))"
+          if ($s.AMRunningMode -notin @('Normal','Passive') -or -not $s.AMServiceEnabled) {
+            throw "Defender engine unavailable (AMRunningMode=$($s.AMRunningMode), AMServiceEnabled=$($s.AMServiceEnabled))"
           }
+          Write-Host "Defender status: AMRunningMode=$($s.AMRunningMode), RTP=$($s.RealTimeProtectionEnabled) - continuing (RTP not required for on-demand scans)."
+
           "MPCMDRUN=$mp" | Out-File -FilePath $env:GITHUB_ENV -Append
           "DEFENDER_SINCE=$(Get-Date -Format o)" | Out-File -FilePath $env:GITHUB_ENV -Append
 
