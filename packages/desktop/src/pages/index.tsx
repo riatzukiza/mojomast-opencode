@@ -159,6 +159,20 @@ export default function Page() {
     setActiveItem(undefined)
   }
 
+  const scrollDiffItem = (element: HTMLElement) => {
+    element.scrollIntoView({ block: "start", behavior: "instant" })
+  }
+
+  const handleDiffTriggerClick = (event: MouseEvent) => {
+    const target = event.currentTarget as HTMLElement
+    queueMicrotask(() => {
+      if (target.getAttribute("aria-expanded") !== "true") return
+      const item = target.closest('[data-slot="accordion-item"]') as HTMLElement | null
+      if (!item) return
+      scrollDiffItem(item)
+    })
+  }
+
   const handlePromptSubmit = async (parts: ContentPart[]) => {
     const existingSession = local.session.active()
     let session = existingSession
@@ -167,7 +181,6 @@ export default function Page() {
       session = created.data ?? undefined
     }
     if (!session) return
-    local.session.setActive(session.id)
 
     interface SubmissionAttachment {
       path: string
@@ -262,6 +275,7 @@ export default function Page() {
         ],
       },
     })
+    local.session.setActive(session.id)
   }
 
   const handleNewSession = () => {
@@ -371,6 +385,7 @@ export default function Page() {
             <List
               data={sync.data.session}
               key={(x) => x.id}
+              current={local.session.active()}
               onSelect={(s) => local.session.setActive(s?.id)}
               onHover={(s) => (!!s ? sync.session.sync(s?.id) : undefined)}
             >
@@ -563,29 +578,26 @@ export default function Page() {
                               </For>
                             </ul>
                           </Show>
-                          <div
-                            ref={messageScrollElement}
-                            class="grow min-w-0 h-full overflow-y-auto no-scrollbar snap-y"
-                          >
+                          <div ref={messageScrollElement} class="grow min-w-0 h-full overflow-y-auto no-scrollbar">
                             <div class="flex flex-col items-start gap-50 pb-[800px]">
                               <For each={local.session.userMessages()}>
                                 {(message) => {
-                                  const title = message.summary?.title
-                                  const prompt = local.session.getMessageText(message)
-                                  const summary = message.summary?.body
+                                  const title = createMemo(() => message.summary?.title)
+                                  const prompt = createMemo(() => local.session.getMessageText(message))
+                                  const summary = createMemo(() => message.summary?.body)
 
                                   return (
                                     <div
                                       data-message={message.id}
-                                      class="flex flex-col items-start self-stretch gap-14 pt-1.5 snap-start"
+                                      class="flex flex-col items-start self-stretch gap-14 pt-1.5"
                                     >
                                       {/* Title */}
                                       <div class="flex flex-col items-start gap-2 self-stretch">
                                         <h1 class="text-14-medium text-text-strong overflow-hidden text-ellipsis min-w-0">
-                                          {title ?? prompt}
+                                          {title() ?? prompt()}
                                         </h1>
                                         <Show when={title}>
-                                          <div class="text-12-regular text-text-base">{prompt}</div>
+                                          <div class="text-12-regular text-text-base">{prompt()}</div>
                                         </Show>
                                       </div>
                                       {/* Summary */}
@@ -593,7 +605,7 @@ export default function Page() {
                                         <Show when={summary}>
                                           <div class="flex flex-col items-start gap-1 self-stretch">
                                             <h2 class="text-12-medium text-text-weak">Summary</h2>
-                                            <div class="text-14-regular text-text-base self-stretch">{summary}</div>
+                                            <div class="text-14-regular text-text-base self-stretch">{summary()}</div>
                                           </div>
                                         </Show>
                                         <Show when={message.summary?.diffs.length}>
@@ -602,7 +614,7 @@ export default function Page() {
                                               {(diff) => (
                                                 <Accordion.Item value={diff.file}>
                                                   <Accordion.Header>
-                                                    <Accordion.Trigger>
+                                                    <Accordion.Trigger onClick={handleDiffTriggerClick}>
                                                       <div class="flex items-center justify-between w-full">
                                                         <div class="flex items-center gap-5">
                                                           <FileIcon
