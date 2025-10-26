@@ -1,4 +1,4 @@
-import z from "zod/v4"
+import z from "zod"
 import { Bus } from "../bus"
 import { NamedError } from "../util/error"
 import { Message } from "./message"
@@ -359,6 +359,7 @@ export namespace MessageV2 {
       "message.part.updated",
       z.object({
         part: Part,
+        delta: z.string().optional(),
       }),
     ),
     PartRemoved: Bus.event(
