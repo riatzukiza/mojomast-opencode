@@ -94,23 +94,53 @@ jobs:
           $scanPath  = (Resolve-Path 'scan').Path
           $eicarPath = Join-Path $scanPath 'eicar.txt'  # <-- whichever name you used
 
-          # 1) pull threat history since our marker
-          $all = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $since }
+          function Get-Detections {
+            param(
+              [datetime]$Start,
+              [string]$EicarPath
+            )
 
-          # classifier: EICAR if ThreatName mentions EICAR OR any resource equals our eicar file path
-          function Is-Eicar($d) {
-            try {
-              if ($d.ThreatName -match 'EICAR') { return $true }
-            } catch {}
-            try {
-              if ($d.Resources -and ($d.Resources.Resource | Where-Object { $_ -ieq $eicarPath })) { return $true }
-            } catch {}
-            return $false
+            $results = Get-MpThreatDetection | Where-Object { $_.InitialDetectionTime -ge $Start }
+
+            $eicarHits = @()
+            $realHits  = @()
+
+            foreach ($item in $results) {
+              $isEicar = $false
+              try {
+                if ($item.ThreatName -match 'EICAR') { $isEicar = $true }
+              } catch {}
+              try {
+                if (-not $isEicar -and $item.Resources -and ($item.Resources.Resource | Where-Object { $_ -ieq $EicarPath })) {
+                  $isEicar = $true
+                }
+              } catch {}
+
+              if ($isEicar) { $eicarHits += $item }
+              if (-not $isEicar) { $realHits += $item }
+            }
+
+            return [pscustomobject]@{ Eicar = $eicarHits; Real = $realHits }
           }
 
-          $eicar = @()
-          $real  = @()
-          foreach ($d in $all) { if (Is-Eicar $d) { $eicar += $d } else { $real += $d } }
+          # poll (up to 90s) because Defender threat history entries can be delayed
+          $deadline = (Get-Date).AddSeconds(90)
+          $interval = 5
+          $detections = $null
+
+          do {
+            $detections = Get-Detections -Start $since -EicarPath $eicarPath
+            if (($detections.Eicar.Count -gt 0) -or ($detections.Real.Count -gt 0)) { break }
+            if ((Get-Date) -ge $deadline) { break }
+            Start-Sleep -Seconds $interval
+          } while ($true)
+
+          if (-not $detections) {
+            $detections = [pscustomobject]@{ Eicar = @(); Real = @() }
+          }
+
+          $eicar = $detections.Eicar
+          $real  = $detections.Real
 
           # 2) (optional) also harvest Defender Operational events for context/evidence
           $events = @()
