@@ -1,0 +1,25 @@
+name: OSV Scan
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+jobs:
+  osv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action@v1
+        with:
+          scan-args: --lockfile bun.lock --recursive .
+
+      - name: Upload OSV report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-report
+          path: osv-scanner-results.sarif

@@ -1,0 +1,33 @@
+name: OWASP Dependency-Check
+
+on:
+  push:
+  pull_request:
+  workflow_call:
+
+jobs:
+  odc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate temporary npm lockfile
+        run: |
+          corepack enable
+          npm ci --package-lock-only
+
+      - name: Run Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: ${{ github.repository }}
+          path: package-lock.json
+          format: 'HTML,JSON'
+          out: reports
+
+      - name: Upload Dependency-Check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odc-reports
+          path: reports

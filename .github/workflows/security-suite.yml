@@ -1,0 +1,20 @@
+name: Security Suite
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  bun-audit:
+    uses: ./.github/workflows/bun-audit.yml
+
+  osv:
+    needs: bun-audit
+    uses: ./.github/workflows/osv-scan.yml
+
+  owasp-dc:
+    needs: osv
+    uses: ./.github/workflows/odc.yml
