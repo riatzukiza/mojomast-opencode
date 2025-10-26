@@ -41,6 +41,15 @@ jobs:
           ls -lh /var/lib/clamav
 
       # Scan extracted bundle so counts reflect actual files
+      - name: Verify ClamAV detects EICAR signature
+        run: |
+          set -e
+          printf 'X5O!P%%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > eicar.com
+          clamscan eicar.com | tee eicar.log
+          grep -q 'eicar.com: Eicar-Test-Signature FOUND' eicar.log
+          grep -q 'Infected files: 1' eicar.log
+          rm -f eicar.com eicar.log
+
       - name: Extract bundle and scan
         run: |
           set -e
