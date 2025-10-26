@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js"
-import z from "zod/v4"
+import z from "zod"
 import { type LanguageModelUsage, type ProviderMetadata } from "ai"
 
 import PROMPT_INITIALIZE from "../session/prompt/initialize.txt"
@@ -340,10 +340,25 @@ export namespace Session {
     },
   )
 
-  export const updatePart = fn(MessageV2.Part, async (part) => {
+  const UpdatePartInput = z.union([
+    MessageV2.Part,
+    z.object({
+      part: MessageV2.TextPart,
+      delta: z.string(),
+    }),
+    z.object({
+      part: MessageV2.ReasoningPart,
+      delta: z.string(),
+    }),
+  ])
+
+  export const updatePart = fn(UpdatePartInput, async (input) => {
+    const part = "delta" in input ? input.part : input
+    const delta = "delta" in input ? input.delta : undefined
     await Storage.write(["part", part.messageID, part.id], part)
     Bus.publish(MessageV2.Event.PartUpdated, {
       part,
+      delta,
     })
     return part
   })
