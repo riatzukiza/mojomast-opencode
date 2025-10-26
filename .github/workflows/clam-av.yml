@@ -48,7 +48,7 @@ jobs:
           unzip -q bundle/opencode.zip -d scan
           echo "File count in payload: $(find scan -type f | wc -l)"
           clamscan -ri --scan-archive=yes scan | tee clamav.log
-          ! grep -q 'Infected files: [1-9]' clamav.log
+          ! grep -qE 'Infected files: [1-9][0-9]*' clamav.log
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
