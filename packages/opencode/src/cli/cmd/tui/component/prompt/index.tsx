@@ -1,7 +1,15 @@
-import { InputRenderable, TextAttributes, BoxRenderable } from "@opentui/core"
-import { createEffect, createMemo, Match, Switch, type JSX } from "solid-js"
+import {
+  TextAttributes,
+  BoxRenderable,
+  TextareaRenderable,
+  MouseEvent,
+  KeyEvent,
+  SyntaxStyle,
+  PasteEvent,
+} from "@opentui/core"
+import { createEffect, createMemo, Match, Switch, type JSX, onMount } from "solid-js"
 import { useLocal } from "@tui/context/local"
-import { Theme } from "@tui/context/theme"
+import { Theme, syntaxTheme } from "@tui/context/theme"
 import { SplitBorder } from "@tui/component/border"
 import { useSDK } from "@tui/context/sdk"
 import { useRoute } from "@tui/context/route"
@@ -11,7 +19,6 @@ import { createStore, produce } from "solid-js/store"
 import { useKeybind } from "@tui/context/keybind"
 import { usePromptHistory, type PromptInfo } from "./history"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
-import { iife } from "@/util/iife"
 import { useCommandDialog } from "../dialog-command"
 import { useRenderer } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
@@ -34,7 +41,7 @@ export type PromptRef = {
 }
 
 export function Prompt(props: PromptProps) {
-  let input: InputRenderable
+  let input: TextareaRenderable
   let anchor: BoxRenderable
   let autocomplete: AutocompleteRef
 
@@ -48,6 +55,11 @@ export function Prompt(props: PromptProps) {
   const command = useCommandDialog()
   const renderer = useRenderer()
 
+  const fileStyleId = syntaxTheme.getStyleId("extmark.file")!
+  const agentStyleId = syntaxTheme.getStyleId("extmark.agent")!
+  const pasteStyleId = syntaxTheme.getStyleId("extmark.paste")!
+  let promptPartTypeId: number
+
   command.register(() => {
     return [
       {
@@ -57,19 +69,20 @@ export function Prompt(props: PromptProps) {
         value: "prompt.editor",
         onSelect: async (dialog) => {
           dialog.clear()
-          const value = input.value
-          input.value = ""
+          const value = input.plainText
+          input.clear()
           setStore("prompt", {
             input: "",
             parts: [],
           })
           const content = await Editor.open({ value, renderer })
           if (content) {
+            input.setText(content, { history: false })
             setStore("prompt", {
               input: content,
               parts: [],
             })
-            input.cursorPosition = content.length
+            input.cursorOffset = Bun.stringWidth(content)
           }
         },
       },
@@ -79,10 +92,12 @@ export function Prompt(props: PromptProps) {
         disabled: true,
         category: "Prompt",
         onSelect: (dialog) => {
+          input.extmarks.clear()
           setStore("prompt", {
             input: "",
             parts: [],
           })
+          setStore("extmarkToPartIndex", new Map())
           dialog.clear()
         },
       },
@@ -117,17 +132,101 @@ export function Prompt(props: PromptProps) {
   const [store, setStore] = createStore<{
     prompt: PromptInfo
     mode: "normal" | "shell"
+    extmarkToPartIndex: Map<number, number>
   }>({
     prompt: {
       input: "",
       parts: [],
     },
     mode: "normal",
+    extmarkToPartIndex: new Map(),
   })
 
   createEffect(() => {
     input.focus()
   })
+
+  onMount(() => {
+    promptPartTypeId = input.extmarks.registerType("prompt-part")
+  })
+
+  function restoreExtmarksFromParts(parts: PromptInfo["parts"]) {
+    input.extmarks.clear()
+    setStore("extmarkToPartIndex", new Map())
+
+    parts.forEach((part, partIndex) => {
+      let start = 0
+      let end = 0
+      let virtualText = ""
+      let styleId: number | undefined
+
+      if (part.type === "file" && part.source?.text) {
+        start = part.source.text.start
+        end = part.source.text.end
+        virtualText = part.source.text.value
+        styleId = fileStyleId
+      } else if (part.type === "agent" && part.source) {
+        start = part.source.start
+        end = part.source.end
+        virtualText = part.source.value
+        styleId = agentStyleId
+      } else if (part.type === "text" && part.source?.text) {
+        start = part.source.text.start
+        end = part.source.text.end
+        virtualText = part.source.text.value
+        styleId = pasteStyleId
+      }
+
+      if (virtualText) {
+        const extmarkId = input.extmarks.create({
+          start,
+          end,
+          virtual: true,
+          styleId,
+          typeId: promptPartTypeId,
+        })
+        setStore("extmarkToPartIndex", (map: Map<number, number>) => {
+          const newMap = new Map(map)
+          newMap.set(extmarkId, partIndex)
+          return newMap
+        })
+      }
+    })
+  }
+
+  function syncExtmarksWithPromptParts() {
+    const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
+    setStore(
+      produce((draft) => {
+        const newMap = new Map<number, number>()
+        const newParts: typeof draft.prompt.parts = []
+
+        for (const extmark of allExtmarks) {
+          const partIndex = draft.extmarkToPartIndex.get(extmark.id)
+          if (partIndex !== undefined) {
+            const part = draft.prompt.parts[partIndex]
+            if (part) {
+              if (part.type === "agent" && part.source) {
+                part.source.start = extmark.start
+                part.source.end = extmark.end
+              } else if (part.type === "file" && part.source?.text) {
+                part.source.text.start = extmark.start
+                part.source.text.end = extmark.end
+              } else if (part.type === "text" && part.source?.text) {
+                part.source.text.start = extmark.start
+                part.source.text.end = extmark.end
+              }
+              newMap.set(extmark.id, newParts.length)
+              newParts.push(part)
+            }
+          }
+        }
+
+        draft.extmarkToPartIndex = newMap
+        draft.prompt.parts = newParts
+      }),
+    )
+  }
 
   props.ref?.({
     get focused() {
@@ -140,14 +239,19 @@ export function Prompt(props: PromptProps) {
       input.blur()
     },
     set(prompt) {
+      input.setText(prompt.input, { history: false })
       setStore("prompt", prompt)
-      input.cursorPosition = prompt.input.length
+      restoreExtmarksFromParts(prompt.parts)
+      input.gotoBufferEnd()
     },
     reset() {
+      input.clear()
+      input.extmarks.clear()
       setStore("prompt", {
         input: "",
         parts: [],
       })
+      setStore("extmarkToPartIndex", new Map())
     },
   })
 
@@ -162,7 +266,7 @@ export function Prompt(props: PromptProps) {
           return sessionID
         })()
     const messageID = Identifier.ascending("message")
-    const input = store.prompt.input
+    const inputText = store.prompt.input
     if (store.mode === "shell") {
       sdk.client.session.shell({
         path: {
@@ -170,12 +274,12 @@ export function Prompt(props: PromptProps) {
         },
         body: {
           agent: local.agent.current().name,
-          command: input,
+          command: inputText,
         },
       })
       setStore("mode", "normal")
-    } else if (input.startsWith("/")) {
-      const [command, ...args] = input.split(" ")
+    } else if (inputText.startsWith("/")) {
+      const [command, ...args] = inputText.split(" ")
       sdk.client.session.command({
         path: {
           id: sessionID,
@@ -202,7 +306,7 @@ export function Prompt(props: PromptProps) {
             {
               id: Identifier.ascending("part"),
               type: "text",
-              text: input,
+              text: inputText,
             },
             ...store.prompt.parts.map((x) => ({
               id: Identifier.ascending("part"),
@@ -213,10 +317,12 @@ export function Prompt(props: PromptProps) {
       })
     }
     history.append(store.prompt)
+    input.extmarks.clear()
     setStore("prompt", {
       input: "",
       parts: [],
     })
+    setStore("extmarkToPartIndex", new Map())
     props.onSubmit?.()
 
     // temporary hack to make sure the message is sent
@@ -227,6 +333,7 @@ export function Prompt(props: PromptProps) {
           sessionID,
         })
       }, 50)
+    input.clear()
   }
   const exit = useExit()
 
@@ -239,77 +346,79 @@ export function Prompt(props: PromptProps) {
         input={() => input}
         setPrompt={(cb) => {
           setStore("prompt", produce(cb))
-          input.cursorPosition = store.prompt.input.length
+        }}
+        setExtmark={(partIndex, extmarkId) => {
+          setStore("extmarkToPartIndex", (map: Map<number, number>) => {
+            const newMap = new Map(map)
+            newMap.set(extmarkId, partIndex)
+            return newMap
+          })
         }}
         value={store.prompt.input}
+        fileStyleId={fileStyleId}
+        agentStyleId={agentStyleId}
+        promptPartTypeId={() => promptPartTypeId}
       />
       <box ref={(r) => (anchor = r)}>
         <box
           flexDirection="row"
           {...SplitBorder}
           borderColor={keybind.leader ? Theme.accent : store.mode === "shell" ? Theme.secondary : undefined}
+          justifyContent="space-evenly"
         >
-          <box backgroundColor={Theme.backgroundElement} width={3} justifyContent="center" alignItems="center">
+          <box
+            backgroundColor={Theme.backgroundElement}
+            width={3}
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
             <text attributes={TextAttributes.BOLD} fg={Theme.primary}>
               {store.mode === "normal" ? ">" : "!"}
             </text>
           </box>
-          <box paddingTop={1} paddingBottom={2} backgroundColor={Theme.backgroundElement} flexGrow={1}>
-            <input
-              onPaste={async function (text) {
-                this.insertText(text)
-              }}
-              onInput={(value) => {
-                let diff = value.length - store.prompt.input.length
-                setStore(
-                  produce((draft) => {
-                    draft.prompt.input = value
-                    for (let i = 0; i < draft.prompt.parts.length; i++) {
-                      const part = draft.prompt.parts[i]
-                      if (!part.source) continue
-                      const source = part.type === "agent" ? part.source : part.source.text
-                      if (source.start >= input.cursorPosition) {
-                        source.start += diff
-                        source.end += diff
-                      }
-                      const sliced = draft.prompt.input.slice(source.start, source.end)
-                      if (sliced != source.value && diff < 0) {
-                        diff -= source.value.length
-                        draft.prompt.input =
-                          draft.prompt.input.slice(0, source.start) + draft.prompt.input.slice(source.end)
-                        draft.prompt.parts.splice(i, 1)
-                        input.cursorPosition = Math.max(0, source.start - 1)
-                        i--
-                      }
-                    }
-                  }),
-                )
+          <box paddingTop={1} paddingBottom={1} backgroundColor={Theme.backgroundElement} flexGrow={1}>
+            <textarea
+              minHeight={1}
+              maxHeight={6}
+              onContentChange={() => {
+                const value = input.plainText
+                setStore("prompt", "input", value)
                 autocomplete.onInput(value)
+                syncExtmarksWithPromptParts()
               }}
-              value={store.prompt.input}
-              onKeyDown={async (e) => {
+              keyBindings={[
+                { name: "return", meta: true, action: "newline" },
+                { name: "enter", meta: true, action: "newline" },
+                { name: "return", action: "submit" },
+                { name: "enter", action: "submit" },
+              ]}
+              onKeyDown={async (e: KeyEvent) => {
                 if (props.disabled) {
                   e.preventDefault()
                   return
                 }
                 if (keybind.match("input_clear", e) && store.prompt.input !== "") {
+                  input.clear()
+                  input.extmarks.clear()
                   setStore("prompt", {
                     input: "",
                     parts: [],
                   })
+                  setStore("extmarkToPartIndex", new Map())
                   return
                 }
                 if (keybind.match("app_exit", e)) {
                   await exit()
                   return
                 }
-                if (e.name === "!" && input.cursorPosition === 0) {
+                if (e.name === "!" && input.visualCursor.offset === 0) {
                   setStore("mode", "shell")
                   e.preventDefault()
                   return
                 }
                 if (store.mode === "shell") {
-                  if ((e.name === "backspace" && input.cursorPosition === 0) || e.name === "escape") {
+                  if ((e.name === "backspace" && input.visualCursor.offset === 0) || e.name === "escape") {
                     setStore("mode", "normal")
                     e.preventDefault()
                     return
@@ -317,15 +426,19 @@ export function Prompt(props: PromptProps) {
                 }
                 if (store.mode === "normal") autocomplete.onKeyDown(e)
                 if (!autocomplete.visible) {
-                  if (e.name === "up" || e.name === "down") {
+                  if (e.option && (e.name === "up" || e.name === "down")) {
                     const direction = e.name === "up" ? -1 : 1
-                    const item = history.move(direction, input.value)
+                    const item = history.move(direction, input.plainText)
                     if (item) {
+                      input.setText(item.input, { history: false })
                       setStore("prompt", item)
-                      input.cursorPosition = item.input.length
+                      restoreExtmarksFromParts(item.parts)
+                      e.preventDefault()
                     }
                     return
                   }
+                }
+                if (!autocomplete.visible) {
                   if (e.name === "escape" && props.sessionID) {
                     sdk.client.session.abort({
                       path: {
@@ -335,35 +448,60 @@ export function Prompt(props: PromptProps) {
                     return
                   }
                 }
-                const old = input.cursorPosition
-                setTimeout(() => {
-                  const position = input.cursorPosition
-                  const direction = Math.sign(old - position)
-                  for (const part of store.prompt.parts) {
-                    const source = iife(() => {
-                      if (part.type === "agent") return part.source
-                      if (part.type === "file") return part.source?.text
-                      return
-                    })
-                    if (source) {
-                      if (position >= source.start && position < source.end) {
-                        if (direction === 1) {
-                          input.cursorPosition = Math.max(0, source.start - 1)
-                        }
-                        if (direction === -1) {
-                          input.cursorPosition = source.end
-                        }
-                      }
-                    }
-                  }
-                }, 0)
               }}
               onSubmit={submit}
-              ref={(r) => (input = r)}
-              onMouseDown={(r) => r.target?.focus()}
+              onPaste={(event: PasteEvent) => {
+                if (props.disabled) {
+                  event.preventDefault()
+                  return
+                }
+                event.preventDefault()
+
+                const pastedContent = event.text.trim()
+                if (!pastedContent) return
+
+                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
+                const currentOffset = input.visualCursor.offset
+                const virtualText = `[Pasted ~${lineCount} lines]`
+                const textToInsert = virtualText + " "
+                const extmarkStart = currentOffset
+                const extmarkEnd = extmarkStart + virtualText.length
+
+                input.insertText(textToInsert)
+
+                const extmarkId = input.extmarks.create({
+                  start: extmarkStart,
+                  end: extmarkEnd,
+                  virtual: true,
+                  styleId: pasteStyleId,
+                  typeId: promptPartTypeId,
+                })
+
+                const part = {
+                  type: "text" as const,
+                  text: pastedContent,
+                  source: {
+                    text: {
+                      start: extmarkStart,
+                      end: extmarkEnd,
+                      value: virtualText,
+                    },
+                  },
+                }
+
+                setStore(
+                  produce((draft) => {
+                    const partIndex = draft.prompt.parts.length
+                    draft.prompt.parts.push(part)
+                    draft.extmarkToPartIndex.set(extmarkId, partIndex)
+                  }),
+                )
+              }}
+              ref={(r: TextareaRenderable) => (input = r)}
+              onMouseDown={(r: MouseEvent) => r.target?.focus()}
               focusedBackgroundColor={Theme.backgroundElement}
               cursorColor={Theme.primary}
-              backgroundColor={Theme.backgroundElement}
+              syntaxStyle={syntaxTheme}
             />
           </box>
           <box backgroundColor={Theme.backgroundElement} width={1} justifyContent="center" alignItems="center"></box>

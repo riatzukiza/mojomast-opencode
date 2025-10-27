@@ -227,7 +227,9 @@ export namespace SessionPrompt {
         }),
         (messages) => insertReminders({ messages, agent }),
       )
-      if (step === 0)
+      step++
+      await processor.next(msgs.findLast((m) => m.info.role === "user")?.info.id!)
+      if (step === 1) {
         ensureTitle({
           session,
           history: msgs,
@@ -235,8 +237,11 @@ export namespace SessionPrompt {
           providerID: model.providerID,
           modelID: model.info.id,
         })
-      step++
-      await processor.next(msgs.findLast((m) => m.info.role === "user")?.info.id!)
+        SessionSummary.summarize({
+          sessionID: input.sessionID,
+          messageID: userMsg.info.id,
+        })
+      }
       await using _ = defer(async () => {
         await processor.end()
       })
@@ -1272,6 +1277,7 @@ export namespace SessionPrompt {
                 assistantMsg.tokens = usage.tokens
                 await Session.updatePart({
                   id: Identifier.ascending("part"),
+                  reason: value.finishReason,
                   snapshot: await Snapshot.track(),
                   messageID: assistantMsg.id,
                   sessionID: assistantMsg.sessionID,
@@ -1297,7 +1303,6 @@ export namespace SessionPrompt {
                 SessionSummary.summarize({
                   sessionID: input.sessionID,
                   messageID: assistantMsg.parentID,
-                  providerID: assistantMsg.modelID,
                 })
                 break
 
@@ -1357,8 +1362,6 @@ export namespace SessionPrompt {
 
               case "finish":
                 assistantMsg.time.completed = Date.now()
-                assistantMsg.finish = value.finishReason
-                if (blocked) assistantMsg.finish = "rejected"
                 await Session.updateMessage(assistantMsg)
                 break
 
@@ -1373,7 +1376,6 @@ export namespace SessionPrompt {
           log.error("process", {
             error: e,
           })
-          assistantMsg.finish = "error"
           const error = MessageV2.fromError(e, { providerID: input.providerID })
           if (retries.count < retries.max && MessageV2.APIError.isInstance(error) && error.data.isRetryable) {
             shouldRetry = true

@@ -41,19 +41,23 @@ export function Header() {
       <text>
         <span style={{ bold: true, fg: Theme.accent }}>#</span> <span style={{ bold: true }}>{session().title}</span>
       </text>
-      <box flexDirection="row" justifyContent="space-between">
-        <Switch>
-          <Match when={session().share?.url}>
-            <text fg={Theme.textMuted}>{session().share!.url}</text>
-          </Match>
-          <Match when={true}>
-            <text wrapMode="none">
-              /share <span style={{ fg: Theme.textMuted }}>to create a shareable link</span>
-            </text>
-          </Match>
-        </Switch>
+      <box flexDirection="row" justifyContent="space-between" gap={1}>
+        <box flexGrow={1} flexShrink={1}>
+          <Switch>
+            <Match when={session().share?.url}>
+              <text fg={Theme.textMuted} wrapMode="word">
+                {session().share!.url}
+              </text>
+            </Match>
+            <Match when={true}>
+              <text wrapMode="word">
+                /share <span style={{ fg: Theme.textMuted }}>to create a shareable link</span>
+              </text>
+            </Match>
+          </Switch>
+        </box>
         <Show when={context()}>
-          <text fg={Theme.textMuted} wrapMode="none">
+          <text fg={Theme.textMuted} wrapMode="none" flexShrink={0}>
             {context()} ({cost()})
           </text>
         </Show>

@@ -36,6 +36,7 @@ import type { TaskTool } from "@/tool/task"
 import { useKeyboard, useTerminalDimensions, type BoxProps, type JSX } from "@opentui/solid"
 import { useSDK } from "@tui/context/sdk"
 import { useCommandDialog } from "@tui/component/dialog-command"
+import { Clipboard } from "@tui/util/clipboard"
 import { Shimmer } from "@tui/ui/shimmer"
 import { useKeybind } from "@tui/context/keybind"
 import { Header } from "./header"
@@ -228,6 +229,15 @@ export function Session() {
           ))
           setTimeout(() => dialog.clear(), 8000)
         }
+        const result = await sdk.client.session.share({
+          path: {
+            id: route.sessionID,
+          },
+        })
+        if (result.data?.share?.url) {
+          await Clipboard.copy(result.data.share.url)
+        }
+        dialog.clear()
       },
     },
     {
@@ -622,9 +632,6 @@ function UserMessage(props: {
             </For>
           </box>
         </Show>
-        <Show when={props.message.summary}>
-          <text>EXPERIMENTAL: {props.message.summary!.text}</text>
-        </Show>
         <text>
           {sync.data.config.username ?? "You"}{" "}
           <Show
@@ -667,7 +674,12 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           <text fg={Theme.textMuted}>{props.message.error?.data.message}</text>
         </box>
       </Show>
-      <Show when={!props.message.time.completed || (props.last && props.message.finish === "tool-calls")}>
+      <Show
+        when={
+          !props.message.time.completed ||
+          (props.last && props.parts.some((item) => item.type === "step-finish" && item.reason === "tool-calls"))
+        }
+      >
         <box
           paddingLeft={2}
           marginTop={1}
@@ -681,7 +693,12 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
           <Shimmer text={`${props.message.modelID}`} color={Theme.text} />
         </box>
       </Show>
-      <Show when={props.message.time.completed && props.message.finish === "stop"}>
+      <Show
+        when={
+          props.message.time.completed &&
+          props.parts.some((item) => item.type === "step-finish" && item.reason !== "tool-calls")
+        }
+      >
         <box paddingLeft={3}>
           <text marginTop={1}>
             <span style={{ fg: local.agent.color(props.message.mode) }}>{Locale.titlecase(props.message.mode)}</span>{" "}
