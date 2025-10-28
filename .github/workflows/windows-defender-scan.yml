@@ -85,6 +85,14 @@ jobs:
           cmd /c type scan\eicar.txt >NUL
           Start-Sleep -Seconds 3  # give logs a moment
 
+      - name: On-demand scan EICAR file
+        shell: pwsh
+        run: |
+          $scan = (Resolve-Path 'scan').Path
+          $target = Join-Path $scan 'eicar.txt'
+          & "$env:MPCMDRUN" -Scan -ScanType 3 -File $target
+          Start-Sleep -Seconds 3  # allow detection telemetry to flush
+
       # assert detection, but do NOT fail here; report via step output
       - name: Collect detections and set outputs
         id: detect
