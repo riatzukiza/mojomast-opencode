@@ -53,9 +53,8 @@ test("should validate required parameters", async () => {
       }
     })
   })
-  })
 
-test("should validate subagent_type parameter", async () => {
+  test("should validate subagent_type parameter", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -71,7 +70,6 @@ test("should validate subagent_type parameter", async () => {
         ).rejects.toThrow("Unknown agent type")
       }
     })
-  })
   })
 
 test("should handle valid agent type", async () => {
