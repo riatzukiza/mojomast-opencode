@@ -1,4 +1,4 @@
-import { mockLSP, setupMockLSP } from "./lsp-mock"
+import { mockLSP, setupMockLSP, MockLSPService } from "./lsp-mock"
 
 // Mock the LSP module at the test level
 export function mockLSPModule() {
@@ -10,7 +10,7 @@ export function mockLSPModule() {
       return {
         diagnostics: mockLSP.diagnostics.bind(mockLSP),
         touchFile: mockLSP.touchFile.bind(mockLSP),
-        Diagnostic: mockLSP.Diagnostic,
+        Diagnostic: MockLSPService.Diagnostic,
       }
     }
     return originalRequire.apply(this, arguments)
@@ -21,13 +21,4 @@ export function mockLSPModule() {
   }
 }
 
-// Alternative approach using jest.mock if available
-export function setupJestMock() {
-  if (typeof jest !== "undefined") {
-    jest.mock("../../src/lsp", () => ({
-      diagnostics: mockLSP.diagnostics.bind(mockLSP),
-      touchFile: mockLSP.touchFile.bind(mockLSP),
-      Diagnostic: mockLSP.Diagnostic,
-    }))
-  }
-}
+// Note: jest.mock not available in bun test environment

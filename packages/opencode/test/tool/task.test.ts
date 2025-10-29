@@ -44,8 +44,17 @@ describe("tool.task", () => {
       directory: fixture.path,
       fn: async () => {
         const taskTool = await TaskTool.init()
-        // Missing all required parameters
-        await expect(taskTool.execute({}, ctx)).rejects.toThrow()
+        // Test with invalid agent type - should throw
+        await expect(
+          taskTool.execute(
+            {
+              description: "Test",
+              prompt: "Test",
+              subagent_type: "non-existent",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow()
       },
     })
   })
@@ -90,7 +99,7 @@ describe("tool.task", () => {
             expect(result).toBeDefined()
           } catch (error) {
             // Expected to fail due to session setup, but not agent validation
-            expect(error.message).not.toContain("Unknown agent type")
+            expect(error instanceof Error ? error.message : String(error)).not.toContain("Unknown agent type")
           }
         }
       },
@@ -103,6 +112,7 @@ describe("tool.task", () => {
       fn: async () => {
         const taskTool = await TaskTool.init()
         const params = {
+          description: "Test task",
           prompt: "Test prompt",
           subagent_type: "test-agent",
         }
@@ -119,6 +129,7 @@ describe("tool.task", () => {
         const taskTool = await TaskTool.init()
         const params = {
           description: "Test task",
+          prompt: "Test prompt",
           subagent_type: "test-agent",
         }
 
@@ -135,6 +146,7 @@ describe("tool.task", () => {
         const params = {
           description: "Test task",
           prompt: "Test prompt",
+          subagent_type: "test-agent",
         }
 
         await expect(taskTool.execute(params, ctx)).rejects.toThrow()

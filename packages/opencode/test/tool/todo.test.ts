@@ -13,8 +13,8 @@ const ctx = {
   metadata: () => {},
 }
 
-let todoWriteTool: TodoWriteTool
-let todoReadTool: TodoReadTool
+let todoWriteTool: Awaited<ReturnType<typeof TodoWriteTool.init>>
+let todoReadTool: Awaited<ReturnType<typeof TodoReadTool.init>>
 
 describe("tool.todo", () => {
   let fixture: any

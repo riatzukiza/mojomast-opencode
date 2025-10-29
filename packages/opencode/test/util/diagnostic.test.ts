@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import type { Diagnostic } from "vscode-languageserver-types"
+import type { Diagnostic, DiagnosticSeverity } from "vscode-languageserver-types"
 import {
   isMultiServerFormat,
   sanitizeServerID,
@@ -13,7 +13,12 @@ import {
 } from "../../src/util/diagnostic"
 
 // Test data helpers
-function createDiagnostic(message: string, severity: number = 1, line: number = 1, character: number = 1): Diagnostic {
+function createDiagnostic(
+  message: string,
+  severity: DiagnosticSeverity = 1 as DiagnosticSeverity,
+  line: number = 1,
+  character: number = 1,
+): Diagnostic {
   return {
     message,
     severity,
@@ -28,7 +33,7 @@ function createDiagnostic(message: string, severity: number = 1, line: number = 
 function createDiagnosticItem(
   message: string,
   serverID: string,
-  severity: number = 1,
+  severity: DiagnosticSeverity = 1 as DiagnosticSeverity,
 ): { diagnostic: Diagnostic; serverID: string } {
   return {
     diagnostic: createDiagnostic(message, severity),

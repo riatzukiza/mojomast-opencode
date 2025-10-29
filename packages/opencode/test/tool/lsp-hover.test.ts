@@ -110,7 +110,7 @@ describe("tool.lsp_hover", () => {
           expect(result.output).toBeDefined()
         } catch (error) {
           // LSP might not be available in test environment
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -137,7 +137,7 @@ describe("tool.lsp_hover", () => {
           expect(result.output).toBeDefined()
         } catch (error) {
           // LSP might not be available in test environment
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })

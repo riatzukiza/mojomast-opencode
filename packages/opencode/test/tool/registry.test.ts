@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test"
 import { ToolRegistry } from "../../src/tool/registry"
 import { Agent } from "../../src/agent/agent"
 import { Tool } from "../../src/tool/tool"
+import z from "zod"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { writeFileSync, mkdirSync } from "fs"
@@ -65,6 +66,9 @@ describe("tool.registry", () => {
         const restrictedAgent: Agent.Info = {
           name: "test-agent",
           mode: "subagent" as const,
+          builtIn: false,
+          tools: {},
+          options: {},
           permission: {
             edit: "deny",
             bash: { "*": "deny" },
@@ -100,6 +104,9 @@ describe("tool.registry", () => {
         const unrestrictedAgent: Agent.Info = {
           name: "test-agent",
           mode: "subagent" as const,
+          builtIn: false,
+          tools: {},
+          options: {},
           permission: {
             edit: "allow",
             bash: { ls: "allow" },
@@ -129,7 +136,7 @@ describe("tool.registry", () => {
         const customTool: Tool.Info = {
           id: "test-custom-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Test custom tool",
             execute: async () => ({
               title: "Test",
@@ -153,10 +160,10 @@ describe("tool.registry", () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        const customTool1 = {
+        const customTool1: Tool.Info = {
           id: "test-update-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Version 1",
             execute: async () => ({
               title: "Test v1",
@@ -166,10 +173,10 @@ describe("tool.registry", () => {
           }),
         }
 
-        const customTool2 = {
+        const customTool2: Tool.Info = {
           id: "test-update-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Version 2",
             execute: async () => ({
               title: "Test v2",
@@ -263,7 +270,7 @@ export default {
           expect(Array.isArray(ids)).toBe(true)
         } catch (error) {
           // Should handle errors gracefully
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
