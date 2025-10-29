@@ -157,8 +157,8 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          // Expected to fail for non-existent files
-          expect(error.message).toBeDefined()
+          // LSP might not be available in test environment
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -181,7 +181,7 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -204,7 +204,7 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -227,7 +227,7 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -247,7 +247,7 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -267,7 +267,7 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
@@ -315,8 +315,8 @@ describe("tool.lsp_hover", () => {
           // Check output is JSON string
           expect(() => JSON.parse(result.output)).not.toThrow()
         } catch (error) {
-          // LSP might not be available, but we can still test the structure
-          expect(error.message).toBeDefined()
+          // Expected to fail for non-existent files
+          expect(error instanceof Error ? error.message : String(error)).toBeDefined()
         }
       },
     })
