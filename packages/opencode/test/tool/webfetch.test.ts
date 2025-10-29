@@ -1,9 +1,9 @@
-import { describe, expect, test, beforeEach, afterEach, vi } from "bun:test"
+import { describe, expect, test, beforeEach, afterEach, mock, spyOn } from "bun:test"
 import { WebFetchTool } from "../../src/tool/webfetch"
 import { Config } from "../../src/config/config"
 import { Permission } from "../../src/permission"
 
-// Mock the modules
+
 ;(vi as any).mock("../../src/config/config", () => ({
   Config: {
     get: vi.fn(),
