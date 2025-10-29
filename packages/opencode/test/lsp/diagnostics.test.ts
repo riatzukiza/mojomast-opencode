@@ -197,7 +197,8 @@ describe("LSP diagnostics integration", () => {
 
           await LSP.touchFile(tsFile, true)
           const diagnostics = await LSP.diagnostics()
-          const fileDiagnostics = diagnostics[tsFile]
+          const rawDiagnostics = diagnostics[tsFile] || []
+          const fileDiagnostics = rawDiagnostics.map((d) => ({ diagnostic: d, serverID: "typescript" }))
 
           if (fileDiagnostics && fileDiagnostics.length > 0) {
             const formatted = LSP.Diagnostic.formatDiagnosticsWithServers(fileDiagnostics)
