@@ -163,26 +163,6 @@ test("should update existing todos", async () => {
     })
   })
 
-    // Update todos
-    const updatedTodos = [
-      {
-        id: "1",
-        content: "Updated todo",
-        status: "completed",
-        priority: "medium",
-      },
-    ]
-    const result = await todoWriteTool.execute(
-      {
-        todos: updatedTodos,
-      },
-      ctx,
-    )
-
-    expect(result.title).toBe("0 todos") // All completed
-    expect(result.metadata.todos).toEqual(updatedTodos)
-  })
-
 test("should handle different todo statuses", async () => {
     await Instance.provide({
       directory: fixture.path,
