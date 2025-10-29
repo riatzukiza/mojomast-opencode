@@ -13,8 +13,17 @@ export const LspHoverTool = Tool.define("lsp_hover", {
     character: z.number().describe("The character number to get diagnostics."),
   }),
   execute: async (args) => {
-    // Handle missing parameters gracefully with defaults
-    const file = args.file || "unknown"
+    // Validate required parameters - throw errors for completely invalid input
+    if (!args.file && Object.keys(args).length === 0) {
+      throw new Error("File parameter is required")
+    }
+
+    if (!args.file) {
+      throw new Error("File parameter is required")
+    }
+
+    // Handle missing optional parameters gracefully with defaults
+    const file = args.file
     const line = args.line ?? 0
     const character = args.character ?? 0
 
