@@ -63,7 +63,7 @@ describe("tool.registry", () => {
         // Create a test agent with restricted permissions
         const restrictedAgent: Agent.Info = {
           name: "test-agent",
-          mode: "secondary" as const,
+          mode: "subagent" as const,
           permission: {
             edit: "deny",
             bash: { "*": "deny" },
@@ -98,7 +98,7 @@ describe("tool.registry", () => {
         // Create a test agent with full permissions
         const unrestrictedAgent: Agent.Info = {
           name: "test-agent",
-          mode: "secondary" as const,
+          mode: "subagent" as const,
           permission: {
             edit: "allow",
             bash: { ls: "allow" },
