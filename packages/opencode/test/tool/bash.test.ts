@@ -82,7 +82,7 @@ describe("tool.bash", () => {
         )
 
         expect(result.metadata.exit).toBeGreaterThan(0)
-        expect(result.metadata.output).toContain("timeout")
+        expect(result.metadata.output).toContain("timed out")
       },
     })
   })
@@ -116,7 +116,7 @@ describe("tool.bash", () => {
             },
             ctx,
           ),
-        ).rejects.toThrow("dangerous")
+        ).rejects.toThrow("not allowed to be executed")
       },
     })
   })
