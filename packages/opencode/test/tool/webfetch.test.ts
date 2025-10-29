@@ -3,18 +3,6 @@ import { WebFetchTool } from "../../src/tool/webfetch"
 import { Config } from "../../src/config/config"
 import { Permission } from "../../src/permission"
 
-
-;(vi as any).mock("../../src/config/config", () => ({
-  Config: {
-    get: vi.fn(),
-  },
-}))
-;(vi as any).mock("../../src/permission", () => ({
-  Permission: {
-    ask: vi.fn(),
-  },
-}))
-
 const ctx = {
   sessionID: "test",
   messageID: "",
@@ -24,30 +12,49 @@ const ctx = {
   metadata: () => {},
 }
 
-const webFetchTool = await WebFetchTool.init()
-
 describe("tool.webfetch", () => {
-  beforeEach(() => {
-    // Mock Config to return default permissions
-    ;(Config as any).get.mockResolvedValue({
-      permission: {
-        webfetch: "allow",
-      },
-    })
+  let webFetchTool: any
 
-    // Mock Permission.ask to resolve immediately
-    ;(Permission as any).ask.mockResolvedValue(undefined)
+  beforeEach(async () => {
+    // Set up localized mocks using mock.module
+    mock.module("../../src/config/config", () => ({
+      Config: {
+        get: mock(() =>
+          Promise.resolve({
+            permission: {
+              webfetch: "allow",
+            },
+          }),
+        ),
+      },
+    }))
+
+    mock.module("../../src/permission", () => ({
+      Permission: {
+        ask: mock(() => Promise.resolve(undefined)),
+      },
+    }))
+
+    // Initialize tool with mocked dependencies
+    const { WebFetchTool: MockedWebFetchTool } = await import("../../src/tool/webfetch")
+    webFetchTool = await MockedWebFetchTool.init()
+  })
+
+  afterEach(() => {
+    // Clean up all mocks to prevent test pollution
+    mock.restore()
+    mock.clearAllMocks()
   })
 
   test("should fetch content from valid URL", async () => {
     // Mock fetch to return test content
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("<html><body>Test content</body></html>"),
       arrayBuffer: () =>
         Promise.resolve(new TextEncoder().encode("<html><body>Test content</body></html>").buffer),
       headers: new Headers({ "content-type": "text/html" }),
-      preconnect: vi.fn(),
+      preconnect: mock(),
     }) as any
 
     const result = await webFetchTool.execute(
@@ -75,12 +82,12 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTP URLs", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("HTTP content"),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTP content").buffer),
       headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
+      preconnect: mock(),
     }) as any
 
     const result = await webFetchTool.execute(
@@ -96,12 +103,12 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTPS URLs", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("HTTPS content"),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTPS content").buffer),
       headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
+      preconnect: mock(),
     }) as any
 
     const result = await webFetchTool.execute(
@@ -117,12 +124,12 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle different formats", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("<h1>HTML Content</h1>"),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<h1>HTML Content</h1>").buffer),
       headers: new Headers({ "content-type": "text/html" }),
-      preconnect: vi.fn(),
+      preconnect: mock(),
     }) as any
 
     // Test text format
@@ -157,7 +164,7 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle fetch errors", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("Network error")) as any
+    global.fetch = mock().mockRejectedValue(new Error("Network error")) as any
 
     await expect(
       webFetchTool.execute(
@@ -171,9 +178,9 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTP error responses", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: false,
-      preconnect: vi.fn(),
+      preconnect: mock(),
       status: 404,
       statusText: "Not Found",
     }) as any
@@ -190,7 +197,7 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle timeout", async () => {
-    global.fetch = vi
+    global.fetch = mock
       .fn()
       .mockImplementation(
         () =>
@@ -226,12 +233,12 @@ describe("tool.webfetch", () => {
   test("should handle large responses", async () => {
     const largeContent = "x".repeat(6 * 1024 * 1024) // 6MB content
 
-    global.fetch = vi.fn().mockResolvedValue({
+    global.fetch = mock().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve(largeContent),
       arrayBuffer: () => Promise.resolve(new TextEncoder().encode(largeContent).buffer),
       headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
+      preconnect: mock(),
     }) as any
 
     // Should throw error for large responses
@@ -247,12 +254,22 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle permission denied", async () => {
-    // Mock Config to return denied permission
-    ;(Config as any).get.mockResolvedValue({
-      permission: {
-        webfetch: "deny",
+    // Override the mock for this specific test
+    mock.module("../../src/config/config", () => ({
+      Config: {
+        get: mock(() =>
+          Promise.resolve({
+            permission: {
+              webfetch: "deny",
+            },
+          }),
+        ),
       },
-    })
+    }))
+
+    // Re-initialize tool with new mock
+    const { WebFetchTool: MockedWebFetchTool } = await import("../../src/tool/webfetch")
+    webFetchTool = await MockedWebFetchTool.init()
 
     await expect(
       webFetchTool.execute(
