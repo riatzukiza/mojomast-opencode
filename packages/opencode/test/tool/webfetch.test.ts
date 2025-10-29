@@ -197,8 +197,7 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle timeout", async () => {
-    global.fetch = mock
-      .fn()
+    global.fetch = mock()
       .mockImplementation(
         () =>
           new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 2000)),
