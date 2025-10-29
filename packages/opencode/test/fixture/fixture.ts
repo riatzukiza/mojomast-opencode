@@ -13,7 +13,7 @@ export async function tmpdir<T>(options?: TmpDirOptions<T>) {
   await $`mkdir -p ${dirpath}`.quiet()
   if (options?.git) {
     try {
-      await $`/usr/bin/git init`.cwd(dirpath).quiet()
+      await $`git init`.cwd(dirpath).quiet()
     } catch (error) {
       // Git not available, continue without git initialization
       console.warn("Git not available, continuing without git initialization")
