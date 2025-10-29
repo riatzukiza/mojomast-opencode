@@ -13,6 +13,17 @@ export const LspHoverTool = Tool.define("lsp_hover", {
     character: z.number().describe("The character number to get diagnostics."),
   }),
   execute: async (args) => {
+    // Validate required parameters
+    if (!args.file) {
+      throw new Error("File parameter is required")
+    }
+    if (args.line === undefined || args.line === null) {
+      throw new Error("Line parameter is required")
+    }
+    if (args.character === undefined || args.character === null) {
+      throw new Error("Character parameter is required")
+    }
+
     const file = path.isAbsolute(args.file) ? args.file : path.join(Instance.directory, args.file)
     await LSP.touchFile(file, true)
     const result = await LSP.hover({
