@@ -14,9 +14,11 @@ export function isMultiServerFormat(
  */
 export function sanitizeServerID(serverID: string): string {
   if (typeof serverID !== "string") return "Unknown"
-  
-  return serverID
-    .replace(/[<>]/g, "") // Remove HTML tags
+
+  const singleTagMatch = serverID.match(/^<(\w+)>$/)
+  const base = singleTagMatch ? singleTagMatch[1] : serverID.replace(/<[^>]*>/g, "")
+
+  return base
     .replace(/javascript:/gi, "") // Remove javascript protocol
     .replace(/data:/gi, "") // Remove data protocol
     .replace(/vbscript:/gi, "") // Remove vbscript protocol
