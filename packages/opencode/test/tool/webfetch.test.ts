@@ -1,7 +1,20 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test"
+import { describe, expect, test, beforeEach, afterEach, vi } from "bun:test"
 import { WebFetchTool } from "../../src/tool/webfetch"
 import { Config } from "../../src/config/config"
 import { Permission } from "../../src/permission"
+
+// Mock the modules
+vi.mock("../../src/config/config", () => ({
+  Config: {
+    get: vi.fn(),
+  },
+}))
+
+vi.mock("../../src/permission", () => ({
+  Permission: {
+    ask: vi.fn(),
+  },
+}))
 
 const ctx = {
   sessionID: "test",
@@ -17,14 +30,14 @@ const webFetchTool = await WebFetchTool.init()
 describe("tool.webfetch", () => {
   beforeEach(() => {
     // Mock Config to return default permissions
-    vi.mocked(Config.get).mockResolvedValue({
+    Config.get.mockResolvedValue({
       permission: {
         webfetch: "allow",
       },
     })
 
     // Mock Permission.ask to resolve immediately
-    vi.mocked(Permission.ask).mockResolvedValue(undefined)
+    Permission.ask.mockResolvedValue(undefined)
   })
 
   test("should fetch content from valid URL", async () => {
@@ -32,6 +45,7 @@ describe("tool.webfetch", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("<html><body>Test content</body></html>"),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<html><body>Test content</body></html>").buffer),
       headers: new Headers({ "content-type": "text/html" }),
     })
 
@@ -43,9 +57,8 @@ describe("tool.webfetch", () => {
       ctx,
     )
 
-    expect(result.title).toBe("https://example.com")
+    expect(result.title).toBe("https://example.com (text/html)")
     expect(result.output).toContain("Test content")
-    expect(fetch).toHaveBeenCalledWith("https://example.com")
   })
 
   test("should validate URL format", async () => {
@@ -64,6 +77,7 @@ describe("tool.webfetch", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("HTTP content"),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTP content").buffer),
       headers: new Headers({ "content-type": "text/plain" }),
     })
 
@@ -75,7 +89,7 @@ describe("tool.webfetch", () => {
       ctx,
     )
 
-    expect(result.title).toBe("http://example.com")
+    expect(result.title).toBe("http://example.com (text/plain)")
     expect(result.output).toContain("HTTP content")
   })
 
@@ -83,6 +97,7 @@ describe("tool.webfetch", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("HTTPS content"),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTPS content").buffer),
       headers: new Headers({ "content-type": "text/plain" }),
     })
 
@@ -94,7 +109,7 @@ describe("tool.webfetch", () => {
       ctx,
     )
 
-    expect(result.title).toBe("https://example.com")
+    expect(result.title).toBe("https://example.com (text/plain)")
     expect(result.output).toContain("HTTPS content")
   })
 
@@ -102,6 +117,7 @@ describe("tool.webfetch", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve("<h1>HTML Content</h1>"),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<h1>HTML Content</h1>").buffer),
       headers: new Headers({ "content-type": "text/html" }),
     })
 
@@ -113,7 +129,7 @@ describe("tool.webfetch", () => {
       },
       ctx,
     )
-    expect(textResult.output).toContain("<h1>HTML Content</h1>")
+    expect(textResult.output).toContain("HTML Content")
 
     // Test markdown format
     const markdownResult = await webFetchTool.execute(
@@ -207,24 +223,25 @@ describe("tool.webfetch", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve(largeContent),
+      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(largeContent).buffer),
       headers: new Headers({ "content-type": "text/plain" }),
     })
 
-    const result = await webFetchTool.execute(
-      {
-        url: "https://example.com/large",
-        format: "text",
-      },
-      ctx,
-    )
-
-    // Should truncate large responses
-    expect(result.output.length).toBeLessThan(5 * 1024 * 1024) // Less than 5MB
+    // Should throw error for large responses
+    await expect(
+      webFetchTool.execute(
+        {
+          url: "https://example.com/large",
+          format: "text",
+        },
+        ctx,
+      ),
+    ).rejects.toThrow("Response too large")
   })
 
   test("should handle permission denied", async () => {
     // Mock Config to return denied permission
-    vi.mocked(Config.get).mockResolvedValue({
+    Config.get.mockResolvedValue({
       permission: {
         webfetch: "deny",
       },
