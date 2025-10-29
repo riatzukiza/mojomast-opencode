@@ -81,6 +81,12 @@ export const BashTool = Tool.define("bash", {
       if (["cd", "rm", "cp", "mv", "mkdir", "touch", "chmod", "chown"].includes(command[0])) {
         for (const arg of command.slice(1)) {
           if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
+
+          // Check for dangerous patterns
+          if (command[0] === "rm" && arg === "." && command.slice(1).some((x) => x.includes("-r"))) {
+            throw new Error("rm -rf . is not allowed to be executed")
+          }
+
           const resolved = await $`realpath ${arg}`
             .quiet()
             .nothrow()
