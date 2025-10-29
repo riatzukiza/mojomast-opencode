@@ -15,10 +15,16 @@ export function isMultiServerFormat(
 export function sanitizeServerID(serverID: string): string {
   if (typeof serverID !== "string") return "Unknown"
 
-  const singleTagMatch = serverID.match(/^<(\w+)>$/)
-  const base = singleTagMatch ? singleTagMatch[1] : serverID.replace(/<[^>]*>/g, "")
+  let result = serverID
 
-  return base
+  const singleTagMatch = result.match(/^<(\w+)>$/)
+  if (singleTagMatch) {
+    result = singleTagMatch[1]
+  } else {
+    result = result.replace(/<[^>]*>/g, "")
+  }
+
+  return result
     .replace(/javascript:/gi, "") // Remove javascript protocol
     .replace(/data:/gi, "") // Remove data protocol
     .replace(/vbscript:/gi, "") // Remove vbscript protocol
@@ -43,8 +49,8 @@ export function groupDiagnosticsByServer(
   // Batch process for better performance
   for (const item of diagnostics) {
     if (!item || !item.diagnostic || !item.serverID) continue
-    
-    const serverID = sanitizeServerID(item.serverID || "Unknown")
+
+    const serverID = sanitizeServerID(item.serverID)
     const existing = grouped.get(serverID)
     
     if (existing) {
