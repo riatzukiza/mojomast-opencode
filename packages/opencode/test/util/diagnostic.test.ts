@@ -254,7 +254,6 @@ describe("diagnostic utilities", () => {
     test("should reject invalid diagnostic structure", () => {
       const invalid = { message: "test" } // missing range
       const result = validateDiagnostic(invalid)
-      console.log("Invalid diagnostic result:", result)
       expect(result).toBe(false)
     })
 
