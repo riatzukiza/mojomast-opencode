@@ -202,7 +202,7 @@ describe("tool.todo", () => {
     })
   })
 
-  test("should validate todo structure", async () => {
+  test("should reject invalid todo structure", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -213,16 +213,14 @@ describe("tool.todo", () => {
           },
         ]
 
-        // Todo tool might not validate strictly, so let's just test it works
-        const result = await todoWriteTool.execute(
-          {
-            todos: invalidTodos as any,
-          },
-          ctx,
-        )
-
-        expect(result.title).toBeDefined()
-        expect(result.metadata.todos).toBeDefined()
+        await expect(
+          todoWriteTool.execute(
+            {
+              todos: invalidTodos as any,
+            },
+            ctx,
+          ),
+        ).rejects.toThrow()
       },
     })
   })

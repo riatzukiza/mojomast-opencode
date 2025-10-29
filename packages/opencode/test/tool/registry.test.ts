@@ -208,11 +208,9 @@ describe("tool.registry", () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        // Create a tool directory
-        const toolDir = path.join(fixture.path, "tool")
+        const toolDir = path.join(fixture.path, ".opencode", "tool")
         mkdirSync(toolDir, { recursive: true })
 
-        // Create a simple tool file
         const toolFile = path.join(toolDir, "test-plugin.ts")
         writeFileSync(
           toolFile,
@@ -229,16 +227,11 @@ export default {
         `,
         )
 
-        // Reset registry state to pick up new tool
-        // Note: This might not work in all test environments due to caching
-        try {
-          const ids = await ToolRegistry.ids()
-          // The tool might or might not be loaded depending on the implementation
-          expect(Array.isArray(ids)).toBe(true)
-        } catch (error) {
-          // Tool loading might fail in test environment
-          expect(true).toBe(true)
-        }
+        await Instance.dispose()
+
+        const ids = await ToolRegistry.ids()
+        expect(Array.isArray(ids)).toBe(true)
+        expect(ids).toContain("test-plugin")
       },
     })
   })
