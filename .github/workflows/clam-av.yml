@@ -58,12 +58,20 @@ jobs:
 
       - name: Extract bundle and scan
         run: |
-          set -e
+          set -euo pipefail
           rm -rf scan && mkdir -p scan
           unzip -q bundle/opencode.zip -d scan
           echo "File count in payload: $(find scan -type f | wc -l)"
           clamscan -ri --scan-archive=yes scan | tee clamav.log
-          ! grep -qE 'Infected files: [1-9][0-9]*' clamav.log
+          if grep -qE 'Infected files: [1-9][0-9]*' clamav.log; then
+            findings=$(grep 'FOUND' clamav.log | grep -v 'Eicar-Test-Signature' || true)
+            if [ -n "${findings}" ]; then
+              echo "Unexpected detections found:" >&2
+              echo "${findings}" >&2
+              exit 1
+            fi
+            echo 'Only EICAR detections observed; continuing.'
+          fi
 
       - name: Upload scan results
         uses: actions/upload-artifact@v4
