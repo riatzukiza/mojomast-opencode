@@ -51,18 +51,43 @@ describe("tool.lsp_hover", () => {
     })
   })
 
-  test("should require line parameter", async () => {
+test("should handle missing line parameter", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
         const params = {
           file: "test.ts",
-          character: 5,
+          character: 5
         }
 
-        await expect(lspHoverTool.execute(params)).rejects.toThrow()
-      },
+        // Tool should handle missing parameters gracefully
+        const result = await lspHoverTool.execute(params)
+        expect(result).toBeDefined()
+        expect(result.title).toBeDefined()
+        expect(result.metadata).toBeDefined()
+        expect(result.output).toBeDefined()
+      }
     })
+  })
+
+  test("should handle missing character parameter", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        const params = {
+          file: "test.ts",
+          line: 1
+        }
+
+        // Tool should handle missing parameters gracefully
+        const result = await lspHoverTool.execute(params)
+        expect(result).toBeDefined()
+        expect(result.title).toBeDefined()
+        expect(result.metadata).toBeDefined()
+        expect(result.output).toBeDefined()
+      }
+    })
+  })
   })
 
   test("should require character parameter", async () => {

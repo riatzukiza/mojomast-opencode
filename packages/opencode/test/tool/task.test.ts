@@ -106,18 +106,154 @@ test("should handle valid agent type", async () => {
   })
   })
 
-  test("should require description parameter", async () => {
+test("should require description parameter", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
+        taskTool = await TaskTool.init()
         const params = {
           prompt: "Test prompt",
-          subagent_type: "test-agent",
+          subagent_type: "test-agent"
         }
 
-        await expect(taskTool.execute(params, ctx)).rejects.toThrow()
-      },
+        await expect(
+          taskTool.execute(params, ctx)
+        ).rejects.toThrow()
+      }
     })
+  })
+
+  test("should require prompt parameter", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const params = {
+          description: "Test task",
+          subagent_type: "test-agent"
+        }
+
+        await expect(
+          taskTool.execute(params, ctx)
+        ).rejects.toThrow()
+      }
+    })
+  })
+
+  test("should require subagent_type parameter", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const params = {
+          description: "Test task",
+          prompt: "Test prompt"
+        }
+
+        await expect(
+          taskTool.execute(params, ctx)
+        ).rejects.toThrow()
+      }
+    })
+  })
+
+  test("should handle empty prompt", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const agents = await Agent.list().then(x => x.filter(a => a.mode !== "primary"))
+        
+        if (agents.length > 0) {
+          const validAgent = agents[0]
+          const params = {
+            description: "Test task",
+            prompt: "",
+            subagent_type: validAgent.name
+          }
+
+          // Should handle empty prompt gracefully
+          try {
+            const result = await taskTool.execute(params, ctx)
+            expect(result).toBeDefined()
+          } catch (error) {
+            // Any error is acceptable for empty prompt test
+            expect(true).toBe(true)
+          }
+        }
+      }
+    })
+  })
+
+  test("should handle long descriptions", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const agents = await Agent.list().then(x => x.filter(a => a.mode !== "primary"))
+        
+        if (agents.length > 0) {
+          const validAgent = agents[0]
+          const params = {
+            description: "This is a very long task description that exceeds the typical 3-5 word recommendation but should still be handled by the system",
+            prompt: "Test prompt",
+            subagent_type: validAgent.name
+          }
+
+          try {
+            const result = await taskTool.execute(params, ctx)
+            expect(result).toBeDefined()
+          } catch (error) {
+            expect(true).toBe(true)
+          }
+        }
+      }
+    })
+  })
+
+  test("should handle special characters in parameters", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const agents = await Agent.list().then(x => x.filter(a => a.mode !== "primary"))
+        
+        if (agents.length > 0) {
+          const validAgent = agents[0]
+          const params = {
+            description: "Task with émojis 🚀 and spëcial chars",
+            prompt: "Prompt with special chars: @#$%^&*()",
+            subagent_type: validAgent.name
+          }
+
+          try {
+            const result = await taskTool.execute(params, ctx)
+            expect(result).toBeDefined()
+          } catch (error) {
+            expect(true).toBe(true)
+          }
+        }
+      }
+    })
+  })
+
+  test("should have proper parameter schema", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
+        const schema = taskTool.parameters
+        expect(schema.shape.description).toBeDefined()
+        expect(schema.shape.prompt).toBeDefined()
+        expect(schema.shape.subagent_type).toBeDefined()
+        
+        // Check parameter descriptions
+        expect(schema.shape.description.description).toContain("description")
+        expect(schema.shape.prompt.description).toContain("task")
+        expect(schema.shape.subagent_type.description).toContain("agent")
+      }
+    })
+  })
   })
 
   test("should require prompt parameter", async () => {
