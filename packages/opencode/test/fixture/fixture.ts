@@ -11,7 +11,14 @@ type TmpDirOptions<T> = {
 export async function tmpdir<T>(options?: TmpDirOptions<T>) {
   const dirpath = path.join(os.tmpdir(), "opencode-test-" + Math.random().toString(36).slice(2))
   await $`mkdir -p ${dirpath}`.quiet()
-  if (options?.git) await $`git init`.cwd(dirpath).quiet()
+  if (options?.git) {
+    try {
+      await $`/usr/bin/git init`.cwd(dirpath).quiet()
+    } catch (error) {
+      // Git not available, continue without git initialization
+      console.warn("Git not available, continuing without git initialization")
+    }
+  }
   const extra = await options?.init?.(dirpath)
   const result = {
     [Symbol.asyncDispose]: async () => {
