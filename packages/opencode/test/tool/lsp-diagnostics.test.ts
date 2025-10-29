@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import path from "path"
 import { LspDiagnosticTool } from "../../src/tool/lsp-diagnostics"
 import { Instance } from "../../src/project/instance"
