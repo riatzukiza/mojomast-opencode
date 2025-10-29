@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test"
+import { describe, expect, test, beforeEach, afterEach, beforeAll } from "bun:test"
 import { TodoWriteTool, TodoReadTool } from "../../src/tool/todo"
 import { Todo } from "../../src/session/todo"
 import { Instance } from "../../src/project/instance"
@@ -77,7 +77,7 @@ describe("tool.todo", () => {
     })
   })
 
-test("should read todos", async () => {
+  test("should read todos", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -87,12 +87,12 @@ test("should read todos", async () => {
             id: "1",
             content: "Test todo",
             status: "pending",
-            priority: "high"
-          }
+            priority: "high",
+          },
         ]
         await Todo.update({
           sessionID: ctx.sessionID,
-          todos
+          todos,
         })
 
         // Then read them
@@ -101,7 +101,7 @@ test("should read todos", async () => {
         expect(result.title).toBe("1 todos")
         expect(result.metadata.todos).toEqual(todos)
         expect(JSON.parse(result.output)).toEqual(todos)
-      }
+      },
     })
   })
 
@@ -114,11 +114,11 @@ test("should read todos", async () => {
         expect(result.title).toBe("0 todos")
         expect(result.metadata.todos).toEqual([])
         expect(JSON.parse(result.output)).toEqual([])
-      }
+      },
     })
   })
 
-test("should update existing todos", async () => {
+  test("should update existing todos", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -128,12 +128,12 @@ test("should update existing todos", async () => {
             id: "1",
             content: "Original todo",
             status: "pending",
-            priority: "high"
-          }
+            priority: "high",
+          },
         ]
         await Todo.update({
           sessionID: ctx.sessionID,
-          todos: initialTodos
+          todos: initialTodos,
         })
 
         // Update todos
@@ -142,20 +142,23 @@ test("should update existing todos", async () => {
             id: "1",
             content: "Updated todo",
             status: "completed",
-            priority: "medium"
-          }
+            priority: "medium",
+          },
         ]
-        const result = await todoWriteTool.execute({
-          todos: updatedTodos
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos: updatedTodos,
+          },
+          ctx,
+        )
 
         expect(result.title).toBe("0 todos") // All completed
         expect(result.metadata.todos).toEqual(updatedTodos)
-      }
+      },
     })
   })
 
-test("should handle different todo statuses", async () => {
+  test("should handle different todo statuses", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -164,61 +167,67 @@ test("should handle different todo statuses", async () => {
             id: "1",
             content: "Pending todo",
             status: "pending",
-            priority: "high"
+            priority: "high",
           },
           {
             id: "2",
-            content: "In progress todo", 
+            content: "In progress todo",
             status: "in_progress",
-            priority: "medium"
+            priority: "medium",
           },
           {
             id: "3",
             content: "Completed todo",
             status: "completed",
-            priority: "low"
+            priority: "low",
           },
           {
             id: "4",
             content: "Cancelled todo",
             status: "cancelled",
-            priority: "low"
-          }
+            priority: "low",
+          },
         ]
 
-        const result = await todoWriteTool.execute({
-          todos
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos,
+          },
+          ctx,
+        )
 
         expect(result.title).toBe("3 todos") // pending + in_progress + cancelled
         expect(result.metadata.todos).toEqual(todos)
-      }
+      },
     })
   })
 
-test("should validate todo structure", async () => {
+  test("should validate todo structure", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
         const invalidTodos = [
           {
             // Missing required fields
-            id: "1"
-          }
+            id: "1",
+          },
         ]
 
         // Todo tool might not validate strictly, so let's just test it works
-        const result = await todoWriteTool.execute({
-          todos: invalidTodos as any
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos: invalidTodos as any,
+          },
+          ctx,
+        )
 
         expect(result.title).toBeDefined()
         expect(result.metadata.todos).toBeDefined()
-      }
+      },
     })
   })
 
-test("should handle large todo lists", async () => {
+  test("should handle large todo lists", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -228,17 +237,20 @@ test("should handle large todo lists", async () => {
             id: i.toString(),
             content: `Todo ${i}`,
             status: "pending" as const,
-            priority: "medium" as const
+            priority: "medium" as const,
           })
         }
 
-        const result = await todoWriteTool.execute({
-          todos
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos,
+          },
+          ctx,
+        )
 
         expect(result.title).toBe("100 todos")
         expect(result.metadata.todos).toHaveLength(100)
-      }
+      },
     })
   })
 
@@ -251,36 +263,35 @@ test("should handle large todo lists", async () => {
             id: "3",
             content: "Third todo",
             status: "pending",
-            priority: "medium"
+            priority: "medium",
           },
           {
             id: "1",
-            content: "First todo", 
+            content: "First todo",
             status: "pending",
-            priority: "high"
+            priority: "high",
           },
           {
             id: "2",
             content: "Second todo",
             status: "pending",
-            priority: "low"
-          }
+            priority: "low",
+          },
         ]
 
-        const result = await todoWriteTool.execute({
-          todos
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos,
+          },
+          ctx,
+        )
 
         expect(result.metadata.todos).toEqual(todos) // Order should be preserved
-      }
+      },
     })
   })
 
-    expect(result.title).toBe("100 todos")
-    expect(result.metadata.todos).toHaveLength(100)
-  })
-
-test("should handle special characters in todo content", async () => {
+  test("should handle special characters in todo content", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
@@ -289,28 +300,29 @@ test("should handle special characters in todo content", async () => {
             id: "1",
             content: "Todo with émojis 🚀 and spëcial chars",
             status: "pending",
-            priority: "high"
-          }
+            priority: "high",
+          },
         ]
 
-        const result = await todoWriteTool.execute({
-          todos
-        }, ctx)
+        const result = await todoWriteTool.execute(
+          {
+            todos,
+          },
+          ctx,
+        )
 
         expect(result.title).toBe("1 todos")
         expect(result.metadata.todos[0].content).toBe("Todo with émojis 🚀 and spëcial chars")
-      }
+      },
     })
   })
 
-test("should validate required parameters for write", async () => {
+  test("should validate required parameters for write", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        await expect(
-          todoWriteTool.execute({} as any, ctx)
-        ).rejects.toThrow()
-      }
+        await expect(todoWriteTool.execute({} as any, ctx)).rejects.toThrow()
+      },
     })
   })
 
@@ -322,80 +334,7 @@ test("should validate required parameters for write", async () => {
 
         expect(result.title).toBe("0 todos")
         expect(result.metadata.todos).toEqual([])
-      }
+      },
     })
-  })
-
-  test("should maintain todo order", async () => {
-    await Instance.provide({
-      directory: fixture.path,
-      fn: async () => {
-        const todos = [
-          {
-            id: "3",
-            content: "Third todo",
-            status: "pending",
-            priority: "medium"
-          },
-          {
-            id: "1",
-            content: "First todo", 
-            status: "pending",
-            priority: "high"
-          },
-          {
-            id: "2",
-            content: "Second todo",
-            status: "pending",
-            priority: "low"
-          }
-        ]
-
-        const result = await todoWriteTool.execute({
-          todos
-        }, ctx)
-
-        expect(result.metadata.todos).toEqual(todos) // Order should be preserved
-      }
-    })
-  })
-
-  test("should handle read with no parameters", async () => {
-    const result = await todoReadTool.execute({}, ctx)
-
-    expect(result.title).toBe("0 todos")
-    expect(result.metadata.todos).toEqual([])
-  })
-
-  test("should maintain todo order", async () => {
-    const todos = [
-      {
-        id: "3",
-        content: "Third todo",
-        status: "pending",
-        priority: "medium",
-      },
-      {
-        id: "1",
-        content: "First todo",
-        status: "pending",
-        priority: "high",
-      },
-      {
-        id: "2",
-        content: "Second todo",
-        status: "pending",
-        priority: "low",
-      },
-    ]
-
-    const result = await todoWriteTool.execute(
-      {
-        todos,
-      },
-      ctx,
-    )
-
-    expect(result.metadata.todos).toEqual(todos) // Order should be preserved
   })
 })
