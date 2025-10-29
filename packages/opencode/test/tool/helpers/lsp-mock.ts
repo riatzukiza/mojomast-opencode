@@ -11,16 +11,11 @@ export function mockLSPModule() {
   }
 
   // Replace the module
-  const cacheKey = require.resolve("../../src/lsp")
-  if (require.cache[cacheKey]) {
-    require.cache[cacheKey].exports = mockLSP
-  }
+  require.cache[require.resolve("../../src/lsp")].exports = mockLSP
 
   return () => {
     // Restore original module
-    if (require.cache[cacheKey]) {
-      require.cache[cacheKey].exports = originalLSP
-    }
+    require.cache[require.resolve("../../src/lsp")].exports = originalLSP
   }
 }
 
