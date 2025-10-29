@@ -15,20 +15,14 @@ export function isMultiServerFormat(
 export function sanitizeServerID(serverID: string): string {
   if (typeof serverID !== "string") return "Unknown"
 
-  let result = serverID
+  const singleTagMatch = serverID.match(/^<(\w+)>$/)
+  const base = singleTagMatch ? singleTagMatch[1] : serverID.replace(/<[^>]*>/g, "")
 
-  const singleTagMatch = result.match(/^<(\w+)>$/)
-  if (singleTagMatch) {
-    result = singleTagMatch[1]
-  } else {
-    result = result.replace(/<[^>]*>/g, "")
-  }
-
-  return result
-    .replace(/javascript:/gi, "")
-    .replace(/data:/gi, "")
-    .replace(/vbscript:/gi, "")
-    .replace(/on\w+=/gi, "")
+  return base
+    .replace(/javascript:/gi, "") // Remove javascript protocol
+    .replace(/data:/gi, "") // Remove data protocol
+    .replace(/vbscript:/gi, "") // Remove vbscript protocol
+    .replace(/on\w+=/gi, "") // Remove event handlers
     .trim()
     .substring(0, 100)
 }
