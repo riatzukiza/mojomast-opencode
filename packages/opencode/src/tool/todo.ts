@@ -9,6 +9,26 @@ export const TodoWriteTool = Tool.define("todowrite", {
     todos: z.array(Todo.Info).describe("The updated todo list"),
   }),
   async execute(params, opts) {
+    if (!params.todos || !Array.isArray(params.todos)) {
+      throw new Error("todos parameter is required and must be an array")
+    }
+
+    // Validate each todo item has required fields
+    for (const todo of params.todos) {
+      if (!todo.id || typeof todo.id !== "string") {
+        throw new Error("Each todo must have a valid id field")
+      }
+      if (!todo.content || typeof todo.content !== "string") {
+        throw new Error("Each todo must have a valid content field")
+      }
+      if (!todo.status || typeof todo.status !== "string") {
+        throw new Error("Each todo must have a valid status field")
+      }
+      if (!todo.priority || typeof todo.priority !== "string") {
+        throw new Error("Each todo must have a valid priority field")
+      }
+    }
+
     await Todo.update({
       sessionID: opts.sessionID,
       todos: params.todos,

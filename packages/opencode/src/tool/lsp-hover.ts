@@ -13,19 +13,22 @@ export const LspHoverTool = Tool.define("lsp_hover", {
     character: z.number().describe("The character number to get diagnostics."),
   }),
   execute: async (args) => {
-    // Validate required parameters - throw errors for completely invalid input
-    if (!args.file && Object.keys(args).length === 0) {
-      throw new Error("File parameter is required")
-    }
-
+    // Validate required parameters
     if (!args.file) {
       throw new Error("File parameter is required")
     }
 
-    // Handle missing optional parameters gracefully with defaults
+    if (args.line === undefined || args.line === null) {
+      throw new Error("Line parameter is required")
+    }
+
+    if (args.character === undefined || args.character === null) {
+      throw new Error("Character parameter is required")
+    }
+
     const file = args.file
-    const line = args.line ?? 0
-    const character = args.character ?? 0
+    const line = args.line
+    const character = args.character
 
     const resolvedFile = path.isAbsolute(file) ? file : path.join(Instance.directory, file)
 
@@ -51,7 +54,11 @@ export const LspHoverTool = Tool.define("lsp_hover", {
         metadata: {
           result: [],
         },
-        output: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2),
+        output: JSON.stringify(
+          { error: error instanceof Error ? error.message : String(error) },
+          null,
+          2,
+        ),
       }
     }
   },
