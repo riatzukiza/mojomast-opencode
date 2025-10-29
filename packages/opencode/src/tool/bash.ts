@@ -263,7 +263,7 @@ export const BashTool = Tool.define("bash", {
       title: params.command,
       metadata: {
         output,
-        exit: proc.exitCode,
+        exit: timedOut ? 1 : proc.exitCode,
         description: params.description,
       },
       output,

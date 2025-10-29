@@ -111,7 +111,7 @@ describe("tool.bash", () => {
         await expect(
           bash.execute(
             {
-              command: "rm -rf /",
+              command: "rm -rf .",
               description: "Dangerous command",
             },
             ctx,
