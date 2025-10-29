@@ -151,7 +151,7 @@ export namespace LSPClient {
               text = ""
             } else {
               // Log other I/O errors and rethrow
-              log.error(`Failed to read file ${input.path}:`, error)
+              log.error(`Failed to read file ${input.path}:`, error as Record<string, any>)
               throw error
             }
           }
