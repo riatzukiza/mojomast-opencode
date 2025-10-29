@@ -119,7 +119,7 @@ export const EditTool = Tool.define("edit", {
         diagnostics,
         diff,
       },
-      title: `${path.relative(Instance.worktree, filePath)}`,
+      title: path.basename(filePath),
       output,
     }
   },

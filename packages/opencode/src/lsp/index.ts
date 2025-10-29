@@ -161,14 +161,16 @@ export namespace LSP {
 
   export async function touchFile(input: string, waitForDiagnostics?: boolean) {
     const clients = await getClients(input)
-    await run(async (client) => {
-      if (!clients.includes(client)) return
-      const wait = waitForDiagnostics ? client.waitForDiagnostics({ path: input }) : Promise.resolve()
-      await client.notify.open({ path: input })
-      return wait
-    }).catch((err) => {
+    try {
+      await run(async (client) => {
+        if (!clients.includes(client)) return
+        const wait = waitForDiagnostics ? client.waitForDiagnostics({ path: input }) : Promise.resolve()
+        await client.notify.open({ path: input })
+        return wait
+      })
+    } catch (err) {
       log.error("failed to touch file", { err, file: input })
-    })
+    }
   }
 
   export async function diagnostics() {
@@ -283,6 +285,41 @@ export namespace LSP {
       const col = diagnostic.range.start.character + 1
 
       return `${severity} [${line}:${col}] ${diagnostic.message}`
+    }
+
+    export function prettyWithServer(diagnostic: LSPClient.Diagnostic, serverID: string) {
+      return `${pretty(diagnostic)} [${serverID}]`
+    }
+
+    export function formatDiagnosticsWithServers(
+      diagnostics: Array<{ diagnostic: LSPClient.Diagnostic; serverID: string }>,
+    ): string {
+      if (!Array.isArray(diagnostics) || diagnostics.length === 0) return ""
+
+      const grouped = diagnostics.reduce(
+        (acc, item) => {
+          const serverID = item.serverID || "Unknown"
+          if (!acc[serverID]) acc[serverID] = []
+          acc[serverID].push(item.diagnostic)
+          return acc
+        },
+        {} as Record<string, LSPClient.Diagnostic[]>,
+      )
+
+      const serverNames = Object.keys(grouped)
+      if (serverNames.length === 1) {
+        return grouped[serverNames[0]].map((d) => pretty(d)).join("\n")
+      }
+
+      const result: string[] = []
+      for (const [serverID, serverDiagnostics] of Object.entries(grouped)) {
+        if (result.length > 0) {
+          result.push("") // Add empty line for spacing
+        }
+        result.push(`--- ${serverID.toUpperCase()} ---`)
+        result.push(...serverDiagnostics.map((d) => pretty(d)))
+      }
+      return result.join("\n")
     }
   }
 }

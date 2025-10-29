@@ -257,4 +257,121 @@ describe("tool.patch", () => {
       },
     })
   })
+
+  describe("error handling", () => {
+    test("should handle invalid patch format", async () => {
+      await using fixture = await tmpdir()
+
+      await Instance.provide({
+        directory: fixture.path,
+        fn: async () => {
+          await expect(
+            patchTool.execute(
+              {
+                patchText: "invalid patch format",
+              },
+              ctx,
+            ),
+          ).rejects.toThrow("Invalid patch format")
+        },
+      })
+    })
+
+    test("should handle malformed hunks", async () => {
+      await using fixture = await tmpdir()
+
+      await Instance.provide({
+        directory: fixture.path,
+        fn: async () => {
+          const invalidPatch = `*** Begin Patch
+--- a/test.txt
++++ b/test.txt
+@@ -1,1 +1,1 @@
+-invalid hunk format-
++valid line`
+
+          await expect(
+            patchTool.execute(
+              {
+                patchText: invalidPatch,
+              },
+              ctx,
+            ),
+          ).rejects.toThrow()
+        },
+      })
+    })
+
+    test("should handle file system errors", async () => {
+      await using fixture = await tmpdir()
+
+      await Instance.provide({
+        directory: fixture.path,
+        fn: async () => {
+          const patchText = `*** Begin Patch
+--- a/nonexistent/file.txt
++++ b/nonexistent/file.txt
+@@ -1,1 +1,1 @@
+-old content
++new content`
+
+          await expect(
+            patchTool.execute(
+              {
+                patchText: patchText,
+              },
+              ctx,
+            ),
+          ).rejects.toThrow()
+        },
+      })
+    })
+
+    test("should handle permission denied", async () => {
+      await using fixture = await tmpdir()
+
+      await Instance.provide({
+        directory: fixture.path,
+        fn: async () => {
+          // Create a read-only directory
+          const readOnlyDir = path.join(fixture.path, "readonly")
+          await fs.mkdir(readOnlyDir, { mode: 0o444 })
+
+          const patchText = `*** Begin Patch
+--- a/test.txt
++++ b/${readOnlyDir}/test.txt
+@@ -1,1 +1,1 @@
+-old content
++new content`
+
+          await expect(
+            patchTool.execute(
+              {
+                patchText: patchText,
+              },
+              ctx,
+            ),
+          ).rejects.toThrow()
+        },
+      })
+    })
+
+    test("should handle empty patch", async () => {
+      await using fixture = await tmpdir()
+
+      await Instance.provide({
+        directory: fixture.path,
+        fn: async () => {
+          await expect(
+            patchTool.execute(
+              {
+                patchText: "",
+              },
+              ctx,
+            ),
+          ).rejects.toThrow("patchText is required")
+        },
+      })
+    })
+  })
 })

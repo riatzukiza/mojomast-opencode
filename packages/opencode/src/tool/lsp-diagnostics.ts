@@ -16,7 +16,7 @@ export const LspDiagnosticTool = Tool.define("lsp_diagnostics", {
     const diagnostics = await LSP.diagnostics()
     const file = diagnostics[normalized]
     return {
-      title: path.relative(Instance.worktree, normalized),
+      title: path.basename(normalized),
       metadata: {
         diagnostics,
       },
