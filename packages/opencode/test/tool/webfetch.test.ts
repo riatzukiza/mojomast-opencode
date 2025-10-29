@@ -14,36 +14,31 @@ const ctx = {
 
 describe("tool.webfetch", () => {
   let webFetchTool: any
+  let configSpy: any
+  let permissionSpy: any
 
   beforeEach(async () => {
-    // Set up localized mocks using mock.module
-    mock.module("../../src/config/config", () => ({
-      Config: {
-        get: mock(() =>
-          Promise.resolve({
-            permission: {
-              webfetch: "allow",
-            },
-          }),
-        ),
+    // Spy on Config.get() method instead of mocking the entire module
+    configSpy = spyOn(Config, "get").mockResolvedValue({
+      permission: {
+        webfetch: "allow",
       },
-    }))
+      // Include other essential config properties to prevent undefined issues
+      username: "testuser",
+      model: "test/model",
+    })
 
-    mock.module("../../src/permission", () => ({
-      Permission: {
-        ask: mock(() => Promise.resolve(undefined)),
-      },
-    }))
+    // Spy on Permission.ask() method
+    permissionSpy = spyOn(Permission, "ask").mockResolvedValue(undefined)
 
-    // Initialize tool with mocked dependencies
-    const { WebFetchTool: MockedWebFetchTool } = await import("../../src/tool/webfetch")
-    webFetchTool = await MockedWebFetchTool.init()
+    // Initialize tool with spied dependencies
+    webFetchTool = await WebFetchTool.init()
   })
 
   afterEach(() => {
-    // Clean up all mocks to prevent test pollution
-    mock.restore()
-    mock.clearAllMocks()
+    // Restore all spies to prevent test pollution
+    configSpy.mockRestore()
+    permissionSpy.mockRestore()
   })
 
   test("should fetch content from valid URL", async () => {
@@ -197,11 +192,10 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle timeout", async () => {
-    global.fetch = mock()
-      .mockImplementation(
-        () =>
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 2000)),
-      ) as any
+    global.fetch = mock().mockImplementation(
+      () =>
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 2000)),
+    ) as any
 
     await expect(
       webFetchTool.execute(
@@ -253,22 +247,14 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle permission denied", async () => {
-    // Override the mock for this specific test
-    mock.module("../../src/config/config", () => ({
-      Config: {
-        get: mock(() =>
-          Promise.resolve({
-            permission: {
-              webfetch: "deny",
-            },
-          }),
-        ),
+    // Override the spy for this specific test
+    configSpy.mockResolvedValue({
+      permission: {
+        webfetch: "deny",
       },
-    }))
-
-    // Re-initialize tool with new mock
-    const { WebFetchTool: MockedWebFetchTool } = await import("../../src/tool/webfetch")
-    webFetchTool = await MockedWebFetchTool.init()
+      username: "testuser",
+      model: "test/model",
+    })
 
     await expect(
       webFetchTool.execute(
