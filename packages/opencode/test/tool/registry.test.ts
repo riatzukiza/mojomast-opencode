@@ -32,7 +32,8 @@ describe("tool.registry", () => {
         expect(ids).toContain("edit")
         expect(ids).toContain("read")
         expect(ids).toContain("write")
-        expect(ids).toContain("todo")
+        expect(ids).toContain("todowrite")
+        expect(ids).toContain("todoread")
       },
     })
   })
