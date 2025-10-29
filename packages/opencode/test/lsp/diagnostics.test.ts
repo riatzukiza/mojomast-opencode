@@ -76,11 +76,12 @@ describe("LSP diagnostics integration", () => {
             expect(fileDiagnostics).toBeDefined()
             expect(Array.isArray(fileDiagnostics)).toBe(true)
 
-            // Check if diagnostics have server information
+            // Check VSCode diagnostic shape
             if (fileDiagnostics.length > 0) {
               const firstDiagnostic = fileDiagnostics[0]
-              expect(firstDiagnostic).toHaveProperty("diagnostic")
-              expect(firstDiagnostic).toHaveProperty("serverID")
+              expect(firstDiagnostic).toHaveProperty("message")
+              expect(firstDiagnostic).toHaveProperty("range")
+              expect(firstDiagnostic).toHaveProperty("severity")
             }
           } else {
             // If no diagnostics, it might be because LSP servers aren't available
