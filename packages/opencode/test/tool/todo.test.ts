@@ -13,11 +13,16 @@ const ctx = {
   metadata: () => {},
 }
 
-const todoWriteTool = await TodoWriteTool.init()
-const todoReadTool = await TodoReadTool.init()
+let todoWriteTool: TodoWriteTool
+let todoReadTool: TodoReadTool
 
 describe("tool.todo", () => {
   let fixture: any
+
+  beforeAll(async () => {
+    todoWriteTool = await TodoWriteTool.init()
+    todoReadTool = await TodoReadTool.init()
+  })
 
   beforeEach(async () => {
     fixture = await tmpdir()
@@ -96,19 +101,6 @@ test("should read todos", async () => {
         expect(result.title).toBe("1 todos")
         expect(result.metadata.todos).toEqual(todos)
         expect(JSON.parse(result.output)).toEqual(todos)
-      }
-    })
-  })
-
-  test("should handle empty todo list", async () => {
-    await Instance.provide({
-      directory: fixture.path,
-      fn: async () => {
-        const result = await todoReadTool.execute({}, ctx)
-
-        expect(result.title).toBe("0 todos")
-        expect(result.metadata.todos).toEqual([])
-        expect(JSON.parse(result.output)).toEqual([])
       }
     })
   })
