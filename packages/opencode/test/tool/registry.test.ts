@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test"
 import { ToolRegistry } from "../../src/tool/registry"
 import { Agent } from "../../src/agent/agent"
+import { Tool } from "../../src/tool/tool"
 import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { writeFileSync, mkdirSync } from "fs"
@@ -125,7 +126,7 @@ describe("tool.registry", () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        const customTool = {
+        const customTool: Tool.Info = {
           id: "test-custom-tool",
           init: async () => ({
             parameters: {},
