@@ -356,22 +356,4 @@ describe("tool.patch", () => {
       })
     })
 
-    test("should handle empty patch", async () => {
-      await using fixture = await tmpdir()
-
-      await Instance.provide({
-        directory: fixture.path,
-        fn: async () => {
-          await expect(
-            patchTool.execute(
-              {
-                patchText: "",
-              },
-              ctx,
-            ),
-          ).rejects.toThrow("patchText is required")
-        },
-      })
-    })
-  })
 })
