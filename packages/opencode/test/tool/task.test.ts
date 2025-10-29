@@ -17,10 +17,6 @@ const ctx = {
 let taskTool: any
 let fixture: any
 
-beforeAll(async () => {
-  taskTool = await TaskTool.init()
-})
-
 beforeEach(async () => {
   fixture = await tmpdir()
 })
@@ -33,50 +29,65 @@ afterEach(async () => {
 
 describe("tool.task", () => {
   test("should initialize with agent list", async () => {
-    expect(taskTool.description).toBeDefined()
-    expect(taskTool.parameters).toBeDefined()
-    // Description should contain agent information
-    expect(taskTool.description).toContain("subagent")
-  })
-
-  test("should validate required parameters", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        // Missing all required parameters
-        await expect(taskTool.execute({}, ctx)).rejects.toThrow()
+        taskTool = await TaskTool.init()
+        expect(taskTool.description).toBeDefined()
+        expect(taskTool.parameters).toBeDefined()
+        // Description should contain agent information
+        expect(taskTool.description).toContain("subagent")
       },
     })
   })
 
-  test("should validate subagent_type parameter", async () => {
+test("should validate required parameters", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
+        taskTool = await TaskTool.init()
+        // Missing all required parameters
+        await expect(
+          taskTool.execute({}, ctx)
+        ).rejects.toThrow()
+      }
+    })
+  })
+  })
+
+test("should validate subagent_type parameter", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        taskTool = await TaskTool.init()
         const params = {
           description: "Test task",
           prompt: "Test prompt",
-          subagent_type: "non-existent-agent",
+          subagent_type: "non-existent-agent"
         }
 
-        await expect(taskTool.execute(params, ctx)).rejects.toThrow("Unknown agent type")
-      },
+        await expect(
+          taskTool.execute(params, ctx)
+        ).rejects.toThrow("Unknown agent type")
+      }
     })
   })
+  })
 
-  test("should handle valid agent type", async () => {
+test("should handle valid agent type", async () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
+        taskTool = await TaskTool.init()
         // Get list of available agents
-        const agents = await Agent.list().then((x) => x.filter((a) => a.mode !== "primary"))
-
+        const agents = await Agent.list().then(x => x.filter(a => a.mode !== "primary"))
+        
         if (agents.length > 0) {
           const validAgent = agents[0]
           const params = {
             description: "Test task",
             prompt: "Simple test task",
-            subagent_type: validAgent.name,
+            subagent_type: validAgent.name
           }
 
           // This should not throw for agent validation
@@ -90,8 +101,9 @@ describe("tool.task", () => {
             expect(error.message).not.toContain("Unknown agent type")
           }
         }
-      },
+      }
     })
+  })
   })
 
   test("should require description parameter", async () => {
