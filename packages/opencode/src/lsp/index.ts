@@ -7,6 +7,7 @@ import { Config } from "../config/config"
 import { spawn } from "child_process"
 import { Instance } from "../project/instance"
 
+import { formatDiagnosticsWithServers as formatDiagnosticsWithServersUtil } from "../util/diagnostic"
 export namespace LSP {
   const log = Log.create({ service: "lsp" })
 
@@ -288,38 +289,22 @@ export namespace LSP {
     }
 
     export function prettyWithServer(diagnostic: LSPClient.Diagnostic, serverID: string) {
-      return `${pretty(diagnostic)} [${serverID}]`
+      const sanitizedServerID = serverID
+        .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
+        .replace(/[\r\n]/g, "") // Remove newlines
+        .replace(/[\[\]]/g, "") // Remove square brackets
+        .replace(/[{}|\\]/g, "") // Remove other potentially problematic chars
+        .replace(/[^a-zA-Z0-9_-]/g, "_") // Replace other unsafe chars with underscore
+        .substring(0, 50) // Limit length
+        .trim() || "Unknown"
+      
+      return `${pretty(diagnostic)} [${sanitizedServerID}]`
     }
 
     export function formatDiagnosticsWithServers(
       diagnostics: Array<{ diagnostic: LSPClient.Diagnostic; serverID: string }>,
     ): string {
-      if (!Array.isArray(diagnostics) || diagnostics.length === 0) return ""
-
-      const grouped = diagnostics.reduce(
-        (acc, item) => {
-          const serverID = item.serverID || "Unknown"
-          if (!acc[serverID]) acc[serverID] = []
-          acc[serverID].push(item.diagnostic)
-          return acc
-        },
-        {} as Record<string, LSPClient.Diagnostic[]>,
-      )
-
-      const serverNames = Object.keys(grouped)
-      if (serverNames.length === 1) {
-        return grouped[serverNames[0]].map((d) => pretty(d)).join("\n")
-      }
-
-      const result: string[] = []
-      for (const [serverID, serverDiagnostics] of Object.entries(grouped)) {
-        if (result.length > 0) {
-          result.push("") // Add empty line for spacing
-        }
-        result.push(`--- ${serverID.toUpperCase()} ---`)
-        result.push(...serverDiagnostics.map((d) => pretty(d)))
-      }
-      return result.join("\n")
+      return formatDiagnosticsWithServersUtil(diagnostics)
     }
   }
 }
