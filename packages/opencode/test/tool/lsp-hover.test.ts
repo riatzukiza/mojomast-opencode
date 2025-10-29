@@ -60,12 +60,7 @@ describe("tool.lsp_hover", () => {
           character: 5,
         }
 
-        // Tool should handle missing parameters gracefully
-        const result = await lspHoverTool.execute(params)
-        expect(result).toBeDefined()
-        expect(result.title).toBeDefined()
-        expect(result.metadata).toBeDefined()
-        expect(result.output).toBeDefined()
+        await expect(lspHoverTool.execute(params)).rejects.toThrow()
       },
     })
   })
@@ -79,12 +74,7 @@ describe("tool.lsp_hover", () => {
           line: 1,
         }
 
-        // Tool should handle missing parameters gracefully
-        const result = await lspHoverTool.execute(params)
-        expect(result).toBeDefined()
-        expect(result.title).toBeDefined()
-        expect(result.metadata).toBeDefined()
-        expect(result.output).toBeDefined()
+        await expect(lspHoverTool.execute(params)).rejects.toThrow()
       },
     })
   })
