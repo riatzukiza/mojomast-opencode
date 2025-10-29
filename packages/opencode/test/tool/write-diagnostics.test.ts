@@ -147,6 +147,10 @@ describe("tool.write diagnostics integration", () => {
 
         await fs.writeFile(utilFile, "export const helper: string = 123;")
 
+        // Read the file again to satisfy FileTime.assert after direct write
+        await Bun.file(utilFile).text()
+        FileTime.read(ctx.sessionID, utilFile)
+
         const result2 = await writeTool.execute(
           {
             filePath: utilFile,
