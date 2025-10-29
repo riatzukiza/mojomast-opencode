@@ -74,7 +74,7 @@ jobs:
         shell: pwsh
         run: |
           $scan = (Resolve-Path 'scan').Path
-          $target = Join-Path $scan 'eicar.txt'
+          $target = Join-Path $scan 'eicar.com'
           $p1 = 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STAND'
           $p2 = 'ARD-ANTIVIRUS-TEST-FILE!$H+H*'
           Set-Content -LiteralPath $target -Value ($p1+$p2) -NoNewline -Encoding Ascii
@@ -82,16 +82,16 @@ jobs:
       - name: Provoke RTP (force read)
         shell: pwsh
         run: |
-          cmd /c type scan\eicar.txt >NUL
-          Start-Sleep -Seconds 3  # give logs a moment
+          cmd /c type scan\eicar.com >NUL
+          Start-Sleep -Seconds 10  # give logs time to surface
 
       - name: On-demand scan EICAR file
         shell: pwsh
         run: |
           $scan = (Resolve-Path 'scan').Path
-          $target = Join-Path $scan 'eicar.txt'
+          $target = Join-Path $scan 'eicar.com'
           & "$env:MPCMDRUN" -Scan -ScanType 3 -File $target
-          Start-Sleep -Seconds 3  # allow detection telemetry to flush
+          Start-Sleep -Seconds 10  # allow detection telemetry to flush
 
       # assert detection, but do NOT fail here; report via step output
       - name: Collect detections and set outputs
@@ -100,7 +100,7 @@ jobs:
         run: |
           $since     = [datetime]$env:DEFENDER_SINCE
           $scanPath  = (Resolve-Path 'scan').Path
-          $eicarPath = Join-Path $scanPath 'eicar.txt'  # <-- whichever name you used
+          $eicarPath = Join-Path $scanPath 'eicar.com'
 
           function Get-Detections {
             param(
@@ -131,8 +131,8 @@ jobs:
             return [pscustomobject]@{ Eicar = $eicarHits; Real = $realHits }
           }
 
-          # poll (up to 90s) because Defender threat history entries can be delayed
-          $deadline = (Get-Date).AddSeconds(90)
+          # poll (up to 120s) because Defender threat history entries can be delayed
+          $deadline = (Get-Date).AddSeconds(120)
           $interval = 5
           $detections = $null
 
