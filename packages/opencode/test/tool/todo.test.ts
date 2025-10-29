@@ -249,14 +249,40 @@ test("should handle large todo lists", async () => {
       }
     })
   })
-    }
 
-    const result = await todoWriteTool.execute(
-      {
-        todos,
-      },
-      ctx,
-    )
+  test("should maintain todo order", async () => {
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        const todos = [
+          {
+            id: "3",
+            content: "Third todo",
+            status: "pending",
+            priority: "medium"
+          },
+          {
+            id: "1",
+            content: "First todo", 
+            status: "pending",
+            priority: "high"
+          },
+          {
+            id: "2",
+            content: "Second todo",
+            status: "pending",
+            priority: "low"
+          }
+        ]
+
+        const result = await todoWriteTool.execute({
+          todos
+        }, ctx)
+
+        expect(result.metadata.todos).toEqual(todos) // Order should be preserved
+      }
+    })
+  })
 
     expect(result.title).toBe("100 todos")
     expect(result.metadata.todos).toHaveLength(100)

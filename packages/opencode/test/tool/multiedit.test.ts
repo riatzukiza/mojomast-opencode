@@ -126,7 +126,7 @@ describe("tool.multiedit", () => {
 
         expect(result.title).toMatch(/test\.txt$/)
         // When no edits, output might be undefined or empty
-        expect(result.output).toBeUndefined()
+        expect(result.output).toBe("")
         const finalContent = await fs.readFile(testFile, "utf-8")
         expect(finalContent).toBe("Original content")
       },
