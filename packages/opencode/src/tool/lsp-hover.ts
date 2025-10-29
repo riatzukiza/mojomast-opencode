@@ -49,7 +49,7 @@ export const LspHoverTool = Tool.define("lsp_hover", {
       return {
         title: file + ":" + line + ":" + character,
         metadata: {
-          result: null,
+          result: [],
           error: error instanceof Error ? error.message : String(error),
         },
         output: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2),
