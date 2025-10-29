@@ -50,6 +50,7 @@ import { Command } from "../command"
 import { $, fileURLToPath } from "bun"
 import { ConfigMarkdown } from "../config/markdown"
 import { SessionSummary } from "./summary"
+import { Config } from "@/config/config"
 
 export namespace SessionPrompt {
   const log = Log.create({ service: "session.prompt" })
@@ -191,28 +192,6 @@ export namespace SessionPrompt {
       processor,
     })
 
-    // const permUnsub = (() => {
-    //   const handled = new Set<string>()
-    //   const options = [
-    //     { optionId: "allow_once", kind: "allow_once", name: "Allow once" },
-    //     { optionId: "allow_always", kind: "allow_always", name: "Always allow" },
-    //     { optionId: "reject_once", kind: "reject_once", name: "Reject" },
-    //   ]
-    //   return Bus.subscribe(Permission.Event.Updated, async (event) => {
-    //     const info = event.properties
-    //     if (info.sessionID !== input.sessionID) return
-    //     if (handled.has(info.id)) return
-    //     handled.add(info.id)
-    //     const toolCallId = info.callID ?? info.id
-    //     const metadata = info.metadata ?? {}
-    //     // TODO: emit permission event to bus for ACP to handle
-    //     Permission.respond({ sessionID: info.sessionID, permissionID: info.id, response: "reject" })
-    //   })
-    // })()
-    // await using _permSub = defer(() => {
-    //   permUnsub?.()
-    // })
-
     const params = await Plugin.trigger(
       "chat.params",
       {
@@ -352,12 +331,14 @@ export namespace SessionPrompt {
         })
 
       let stream = doStream()
+      const cfg = await Config.get()
+      const maxRetries = cfg.experimental?.chatMaxRetries ?? MAX_RETRIES
       let result = await processor.process(stream, {
         count: 0,
-        max: MAX_RETRIES,
+        max: maxRetries,
       })
       if (result.shouldRetry) {
-        for (let retry = 1; retry < MAX_RETRIES; retry++) {
+        for (let retry = 1; retry < maxRetries; retry++) {
           const lastRetryPart = result.parts.findLast((p) => p.type === "retry")
 
           if (lastRetryPart) {
@@ -394,7 +375,7 @@ export namespace SessionPrompt {
           stream = doStream()
           result = await processor.process(stream, {
             count: retry,
-            max: MAX_RETRIES,
+            max: maxRetries,
           })
           if (!result.shouldRetry) {
             break
@@ -604,7 +585,17 @@ export namespace SessionPrompt {
             args,
           },
         )
-        const result = await execute(args, opts)
+        const result = await execute(args, opts).catch((err: unknown) => {
+          log.error("Error executing tool", { error: err, tool: key })
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Failed to execute tool: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+          }
+        })
 
         await Plugin.trigger(
           "tool.execute.after",
@@ -1712,6 +1703,7 @@ export namespace SessionPrompt {
     modelID: string
   }) {
     if (input.session.parentID) return
+    if (!Session.isDefaultTitle(input.session.title)) return
     const isFirst =
       input.history.filter((m) => m.info.role === "user" && !m.parts.every((p) => "synthetic" in p && p.synthetic))
         .length === 1

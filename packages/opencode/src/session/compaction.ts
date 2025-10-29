@@ -16,6 +16,7 @@ import { Log } from "../util/log"
 import { SessionLock } from "./lock"
 import { ProviderTransform } from "@/provider/transform"
 import { SessionRetry } from "./retry"
+import { Config } from "@/config/config"
 
 export namespace SessionCompaction {
   const log = Log.create({ service: "session.compaction" })
@@ -155,6 +156,7 @@ export namespace SessionCompaction {
             error,
           })
         },
+        tools: model.info.tool_call ? {} : undefined,
         messages: [
           ...system.map(
             (x): ModelMessage => ({
@@ -188,7 +190,11 @@ export namespace SessionCompaction {
             case "text-delta":
               part.text += value.text
               if (value.providerMetadata) part.metadata = value.providerMetadata
-              if (part.text) await Session.updatePart(part)
+              if (part.text)
+                await Session.updatePart({
+                  part,
+                  delta: value.text,
+                })
               continue
             case "text-end": {
               part.text = part.text.trimEnd()
@@ -253,12 +259,14 @@ export namespace SessionCompaction {
     }
 
     let stream = doStream()
+    const cfg = await Config.get()
+    const maxRetries = cfg.experimental?.chatMaxRetries ?? MAX_RETRIES
     let result = await process(stream, {
       count: 0,
-      max: MAX_RETRIES,
+      max: maxRetries,
     })
     if (result.shouldRetry) {
-      for (let retry = 1; retry < MAX_RETRIES; retry++) {
+      for (let retry = 1; retry < maxRetries; retry++) {
         const lastRetryPart = result.parts.findLast((p) => p.type === "retry")
 
         if (lastRetryPart) {
@@ -295,7 +303,7 @@ export namespace SessionCompaction {
         stream = doStream()
         result = await process(stream, {
           count: retry,
-          max: MAX_RETRIES,
+          max: maxRetries,
         })
         if (!result.shouldRetry) {
           break
