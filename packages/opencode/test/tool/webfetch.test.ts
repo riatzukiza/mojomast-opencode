@@ -30,27 +30,31 @@ const webFetchTool = await WebFetchTool.init()
 describe("tool.webfetch", () => {
   beforeEach(() => {
     // Mock Config to return default permissions
-    ;(Config as any).get
-      .mockResolvedValue({
-        permission: {
-          webfetch: "allow",
-        },
-      })(
-        // Mock Permission.ask to resolve immediately
-        Permission as any,
-      )
-      .ask.mockResolvedValue(undefined)
+    vi.mocked(Config.get).mockResolvedValue({
+      permission: {
+        webfetch: "allow",
+      },
+    })
+
+    // Mock Permission.ask to resolve immediately
+    vi.mocked(Permission.ask).mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   test("should fetch content from valid URL", async () => {
     // Mock fetch to return test content
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("<html><body>Test content</body></html>"),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<html><body>Test content</body></html>").buffer),
-      headers: new Headers({ "content-type": "text/html" }),
-      preconnect: vi.fn(),
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve("<html><body>Test content</body></html>"),
+        arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<html><body>Test content</body></html>").buffer),
+        headers: new Headers({ "content-type": "text/html" }),
+      }),
+      { preconnect: vi.fn() },
+    )
 
     const result = await webFetchTool.execute(
       {
@@ -77,13 +81,15 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTP URLs", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("HTTP content"),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTP content").buffer),
-      headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve("HTTP content"),
+        arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTP content").buffer),
+        headers: new Headers({ "content-type": "text/plain" }),
+      }),
+      { preconnect: vi.fn() },
+    )
 
     const result = await webFetchTool.execute(
       {
@@ -98,13 +104,15 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTPS URLs", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("HTTPS content"),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTPS content").buffer),
-      headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve("HTTPS content"),
+        arrayBuffer: () => Promise.resolve(new TextEncoder().encode("HTTPS content").buffer),
+        headers: new Headers({ "content-type": "text/plain" }),
+      }),
+      { preconnect: vi.fn() },
+    )
 
     const result = await webFetchTool.execute(
       {
@@ -119,13 +127,15 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle different formats", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("<h1>HTML Content</h1>"),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<h1>HTML Content</h1>").buffer),
-      headers: new Headers({ "content-type": "text/html" }),
-      preconnect: vi.fn(),
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve("<h1>HTML Content</h1>"),
+        arrayBuffer: () => Promise.resolve(new TextEncoder().encode("<h1>HTML Content</h1>").buffer),
+        headers: new Headers({ "content-type": "text/html" }),
+      }),
+      { preconnect: vi.fn() },
+    )
 
     // Test text format
     const textResult = await webFetchTool.execute(
@@ -159,7 +169,7 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle fetch errors", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("Network error")) as any
+    global.fetch = Object.assign(vi.fn().mockRejectedValue(new Error("Network error")), { preconnect: vi.fn() })
 
     await expect(
       webFetchTool.execute(
@@ -173,12 +183,14 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle HTTP error responses", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      preconnect: vi.fn(),
-      status: 404,
-      statusText: "Not Found",
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      }),
+      { preconnect: vi.fn() },
+    )
 
     await expect(
       webFetchTool.execute(
@@ -192,11 +204,14 @@ describe("tool.webfetch", () => {
   })
 
   test("should handle timeout", async () => {
-    global.fetch = vi
-      .fn()
-      .mockImplementation(
-        () => new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 2000)),
-      )
+    global.fetch = Object.assign(
+      vi
+        .fn()
+        .mockImplementation(
+          () => new Promise((_, reject) => setTimeout(() => reject(new Error("Request timeout")), 2000)),
+        ),
+      { preconnect: vi.fn() },
+    )
 
     await expect(
       webFetchTool.execute(
@@ -227,13 +242,15 @@ describe("tool.webfetch", () => {
   test("should handle large responses", async () => {
     const largeContent = "x".repeat(6 * 1024 * 1024) // 6MB content
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(largeContent),
-      arrayBuffer: () => Promise.resolve(new TextEncoder().encode(largeContent).buffer),
-      headers: new Headers({ "content-type": "text/plain" }),
-      preconnect: vi.fn(),
-    })
+    global.fetch = Object.assign(
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(largeContent),
+        arrayBuffer: () => Promise.resolve(new TextEncoder().encode(largeContent).buffer),
+        headers: new Headers({ "content-type": "text/plain" }),
+      }),
+      { preconnect: vi.fn() },
+    )
 
     // Should throw error for large responses
     await expect(
@@ -249,7 +266,7 @@ describe("tool.webfetch", () => {
 
   test("should handle permission denied", async () => {
     // Mock Config to return denied permission
-    Config.get.mockResolvedValue({
+    vi.mocked(Config.get).mockResolvedValue({
       permission: {
         webfetch: "deny",
       },
