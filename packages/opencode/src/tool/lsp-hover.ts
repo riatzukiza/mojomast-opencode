@@ -50,7 +50,7 @@ export const LspHoverTool = Tool.define("lsp_hover", {
     } catch (error) {
       // Return error information in structured format
       return {
-        title: file + ":" + line + ":" + character,
+        title: path.relative(Instance.worktree, resolvedFile) + ":" + line + ":" + character,
         metadata: {
           result: [],
         },
