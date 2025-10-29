@@ -7,17 +7,17 @@ import { tmpdir } from "../fixture/fixture"
 const ctx = {
   sessionID: "test-session",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
-let todoWriteTool: TodoWriteTool
-let todoReadTool: TodoReadTool
+let todoWriteTool: Awaited<ReturnType<typeof TodoWriteTool.init>>
+let todoReadTool: Awaited<ReturnType<typeof TodoReadTool.init>>
 
 describe("tool.todo", () => {
-  let fixture: any
+  let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
   beforeAll(async () => {
     todoWriteTool = await TodoWriteTool.init()
@@ -213,16 +213,14 @@ describe("tool.todo", () => {
           },
         ]
 
-        // Todo tool might not validate strictly, so let's just test it works
-        const result = await todoWriteTool.execute(
-          {
-            todos: invalidTodos as any,
-          },
-          ctx,
-        )
-
-        expect(result.title).toBeDefined()
-        expect(result.metadata.todos).toBeDefined()
+        await expect(
+          todoWriteTool.execute(
+            {
+              todos: invalidTodos as any,
+            },
+            ctx,
+          ),
+        ).rejects.toThrow()
       },
     })
   })

@@ -1,4 +1,6 @@
-import { mockLSP, setupMockLSP } from "./lsp-mock"
+import { mockLSP, MockLSPService } from "./lsp-mock"
+
+declare const jest: { mock: (module: string, factory: () => unknown) => void } | undefined
 
 // Mock the LSP module at the test level
 export function mockLSPModule() {
@@ -10,7 +12,7 @@ export function mockLSPModule() {
       return {
         diagnostics: mockLSP.diagnostics.bind(mockLSP),
         touchFile: mockLSP.touchFile.bind(mockLSP),
-        Diagnostic: mockLSP.Diagnostic,
+        Diagnostic: MockLSPService.Diagnostic,
       }
     }
     return originalRequire.apply(this, arguments)
@@ -27,7 +29,7 @@ export function setupJestMock() {
     jest.mock("../../src/lsp", () => ({
       diagnostics: mockLSP.diagnostics.bind(mockLSP),
       touchFile: mockLSP.touchFile.bind(mockLSP),
-      Diagnostic: mockLSP.Diagnostic,
+      Diagnostic: MockLSPService.Diagnostic,
     }))
   }
 }

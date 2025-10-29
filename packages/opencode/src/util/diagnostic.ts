@@ -106,35 +106,6 @@ export function formatDiagnosticWithServer(diagnostic: Diagnostic, serverID: str
 }
 
 /**
- * Format diagnostics with server grouping and separators
- */
-export function formatDiagnosticsWithServers(diagnostics: Array<{ diagnostic: Diagnostic; serverID: string }>): string {
-  if (!Array.isArray(diagnostics)) return ""
-
-  const validDiagnostics = diagnostics.filter(validateDiagnosticItem)
-  if (validDiagnostics.length === 0) return ""
-
-  const grouped = groupDiagnosticsByServer(validDiagnostics)
-  const serverNames = Object.keys(grouped)
-
-  if (serverNames.length === 1) {
-    // Only one server, no need for separators
-    return grouped[serverNames[0]].map((d) => formatDiagnosticWithServer(d, serverNames[0])).join("\n")
-  }
-
-  // Multiple servers, add separators
-  const result: string[] = []
-  for (const [serverID, serverDiagnostics] of Object.entries(grouped)) {
-    if (result.length > 0) {
-      result.push("") // Add empty line for spacing
-    }
-    result.push(`--- ${sanitizeServerID(serverID).toUpperCase()} ---`)
-    result.push(...serverDiagnostics.map((d) => formatDiagnosticWithServer(d, serverID)))
-  }
-  return result.join("\n")
-}
-
-/**
  * Filter diagnostics by severity level
  * Optimized with early validation
  */

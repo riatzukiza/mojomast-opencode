@@ -14,15 +14,23 @@ export function isMultiServerFormat(
  */
 export function sanitizeServerID(serverID: string): string {
   if (typeof serverID !== "string") return "Unknown"
-  
-  return serverID
-    .replace(/[<>]/g, "") // Remove HTML tags
-    .replace(/javascript:/gi, "") // Remove javascript protocol
-    .replace(/data:/gi, "") // Remove data protocol
-    .replace(/vbscript:/gi, "") // Remove vbscript protocol
-    .replace(/on\w+=/gi, "") // Remove event handlers
+
+  let result = serverID
+
+  const singleTagMatch = result.match(/^<(\w+)>$/)
+  if (singleTagMatch) {
+    result = singleTagMatch[1]
+  } else {
+    result = result.replace(/<[^>]*>/g, "")
+  }
+
+  return result
+    .replace(/javascript:/gi, "")
+    .replace(/data:/gi, "")
+    .replace(/vbscript:/gi, "")
+    .replace(/on\w+=/gi, "")
     .trim()
-    .substring(0, 100) // Limit length
+    .substring(0, 100)
 }
 
 /**

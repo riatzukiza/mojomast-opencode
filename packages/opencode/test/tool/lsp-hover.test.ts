@@ -5,8 +5,8 @@ import { tmpdir } from "../fixture/fixture"
 import { writeFileSync } from "fs"
 import path from "path"
 
-let lspHoverTool: any
-let fixture: any
+let lspHoverTool: Awaited<ReturnType<typeof LspHoverTool.init>>
+let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
 beforeAll(async () => {
   lspHoverTool = await LspHoverTool.init()
@@ -60,12 +60,7 @@ describe("tool.lsp_hover", () => {
           character: 5,
         }
 
-        // Tool should handle missing parameters gracefully
-        const result = await lspHoverTool.execute(params)
-        expect(result).toBeDefined()
-        expect(result.title).toBeDefined()
-        expect(result.metadata).toBeDefined()
-        expect(result.output).toBeDefined()
+        await expect(lspHoverTool.execute(params)).rejects.toThrow()
       },
     })
   })
@@ -79,12 +74,7 @@ describe("tool.lsp_hover", () => {
           line: 1,
         }
 
-        // Tool should handle missing parameters gracefully
-        const result = await lspHoverTool.execute(params)
-        expect(result).toBeDefined()
-        expect(result.title).toBeDefined()
-        expect(result.metadata).toBeDefined()
-        expect(result.output).toBeDefined()
+        await expect(lspHoverTool.execute(params)).rejects.toThrow()
       },
     })
   })
@@ -110,7 +100,11 @@ describe("tool.lsp_hover", () => {
           expect(result.output).toBeDefined()
         } catch (error) {
           // LSP might not be available in test environment
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -137,7 +131,11 @@ describe("tool.lsp_hover", () => {
           expect(result.output).toBeDefined()
         } catch (error) {
           // LSP might not be available in test environment
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -158,7 +156,11 @@ describe("tool.lsp_hover", () => {
           expect(result).toBeDefined()
         } catch (error) {
           // Expected to fail for non-existent files
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -181,7 +183,11 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -204,7 +210,11 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -227,7 +237,11 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -247,7 +261,11 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -267,7 +285,11 @@ describe("tool.lsp_hover", () => {
           const result = await lspHoverTool.execute(params)
           expect(result).toBeDefined()
         } catch (error) {
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })
@@ -316,7 +338,11 @@ describe("tool.lsp_hover", () => {
           expect(() => JSON.parse(result.output)).not.toThrow()
         } catch (error) {
           // LSP might not be available, but we can still test the structure
-          expect(error.message).toBeDefined()
+          if (error instanceof Error) {
+            expect(error.message).toBeDefined()
+            return
+          }
+          throw error
         }
       },
     })

@@ -5,8 +5,9 @@ import { Instance } from "../../src/project/instance"
 import { tmpdir } from "../fixture/fixture"
 import { writeFileSync, mkdirSync } from "fs"
 import path from "path"
+import z from "zod"
 
-let fixture: any
+let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
 beforeEach(async () => {
   fixture = await tmpdir()
@@ -63,7 +64,7 @@ describe("tool.registry", () => {
         // Create a test agent with restricted permissions
         const restrictedAgent: Agent.Info = {
           name: "test-agent",
-          mode: "secondary" as const,
+          mode: "subagent" as const,
           permission: {
             edit: "deny",
             bash: { "*": "deny" },
@@ -98,7 +99,7 @@ describe("tool.registry", () => {
         // Create a test agent with full permissions
         const unrestrictedAgent: Agent.Info = {
           name: "test-agent",
-          mode: "secondary" as const,
+          mode: "subagent" as const,
           permission: {
             edit: "allow",
             bash: { ls: "allow" },
@@ -128,7 +129,7 @@ describe("tool.registry", () => {
         const customTool = {
           id: "test-custom-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Test custom tool",
             execute: async () => ({
               title: "Test",
@@ -155,7 +156,7 @@ describe("tool.registry", () => {
         const customTool1 = {
           id: "test-update-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Version 1",
             execute: async () => ({
               title: "Test v1",
@@ -168,7 +169,7 @@ describe("tool.registry", () => {
         const customTool2 = {
           id: "test-update-tool",
           init: async () => ({
-            parameters: {},
+            parameters: z.object({}),
             description: "Version 2",
             execute: async () => ({
               title: "Test v2",

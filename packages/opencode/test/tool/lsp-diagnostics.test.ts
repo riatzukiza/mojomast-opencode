@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeEach, afterEach } from "bun:test"
 import path from "path"
 import { LspDiagnosticTool } from "../../src/tool/lsp-diagnostics"
 import { Instance } from "../../src/project/instance"
@@ -7,16 +8,16 @@ import * as fs from "fs/promises"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
 const lspDiagnosticTool = await LspDiagnosticTool.init()
 
 describe("tool.lsp_diagnostics", () => {
-  let fixture: any
+  let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
   beforeEach(async () => {
     fixture = await tmpdir()

@@ -8,16 +8,16 @@ import * as fs from "fs/promises"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
 const lsTool = await ListTool.init()
 
 describe("tool.list", () => {
-  let fixture: any
+  let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
   beforeEach(async () => {
     fixture = await tmpdir()

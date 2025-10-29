@@ -7,13 +7,13 @@ import { tmpdir } from "../fixture/fixture"
 const ctx = {
   sessionID: "test-session",
   messageID: "test-message",
-  toolCallID: "test-tool-call",
+  callID: "test-tool-call",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
-let fixture: any
+let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
 beforeEach(async () => {
   fixture = await tmpdir()
@@ -89,8 +89,11 @@ describe("tool.task", () => {
             const result = await taskTool.execute(params, ctx)
             expect(result).toBeDefined()
           } catch (error) {
-            // Expected to fail due to session setup, but not agent validation
-            expect(error.message).not.toContain("Unknown agent type")
+            if (error instanceof Error) {
+              expect(error.message).not.toContain("Unknown agent type")
+              return
+            }
+            throw error
           }
         }
       },
@@ -162,8 +165,10 @@ describe("tool.task", () => {
             const result = await taskTool.execute(params, ctx)
             expect(result).toBeDefined()
           } catch (error) {
-            // Any error is acceptable for empty prompt test
-            expect(true).toBe(true)
+            if (error instanceof Error) {
+              return
+            }
+            throw error
           }
         }
       },
@@ -190,7 +195,10 @@ describe("tool.task", () => {
             const result = await taskTool.execute(params, ctx)
             expect(result).toBeDefined()
           } catch (error) {
-            expect(true).toBe(true)
+            if (error instanceof Error) {
+              return
+            }
+            throw error
           }
         }
       },
@@ -216,7 +224,10 @@ describe("tool.task", () => {
             const result = await taskTool.execute(params, ctx)
             expect(result).toBeDefined()
           } catch (error) {
-            expect(true).toBe(true)
+            if (error instanceof Error) {
+              return
+            }
+            throw error
           }
         }
       },

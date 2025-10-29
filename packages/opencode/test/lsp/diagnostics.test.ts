@@ -9,16 +9,14 @@ import type { Diagnostic } from "vscode-languageserver-types"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
-const projectRoot = path.join(__dirname, "../..")
-
 describe("LSP diagnostics integration", () => {
-  let fixture: any
+  let fixture: Awaited<ReturnType<typeof tmpdir>> | undefined
 
   beforeEach(async () => {
     fixture = await tmpdir()
@@ -76,11 +74,11 @@ describe("LSP diagnostics integration", () => {
             expect(fileDiagnostics).toBeDefined()
             expect(Array.isArray(fileDiagnostics)).toBe(true)
 
-            // Check if diagnostics have server information
             if (fileDiagnostics.length > 0) {
               const firstDiagnostic = fileDiagnostics[0]
-              expect(firstDiagnostic).toHaveProperty("diagnostic")
-              expect(firstDiagnostic).toHaveProperty("serverID")
+              expect(firstDiagnostic).toHaveProperty("message")
+              expect(firstDiagnostic).toHaveProperty("range")
+              expect(firstDiagnostic).toHaveProperty("severity")
             }
           } else {
             // If no diagnostics, it might be because LSP servers aren't available
@@ -200,15 +198,17 @@ describe("LSP diagnostics integration", () => {
           const fileDiagnostics = diagnostics[tsFile]
 
           if (fileDiagnostics && fileDiagnostics.length > 0) {
-            const formatted = LSP.Diagnostic.formatDiagnosticsWithServers(fileDiagnostics)
+            const diagnosticsWithServers = fileDiagnostics.map((diagnostic) => ({
+              diagnostic,
+              serverID: diagnostic.source ?? "unknown",
+            }))
+            const formatted = LSP.Diagnostic.formatDiagnosticsWithServers(diagnosticsWithServers)
             expect(typeof formatted).toBe("string")
             expect(formatted.length).toBeGreaterThan(0)
 
             // Should not contain server separators for single server
-            if (
-              fileDiagnostics.length === 1 ||
-              (fileDiagnostics.length > 0 && fileDiagnostics.every((d) => d.serverID === fileDiagnostics[0].serverID))
-            ) {
+            const uniqueServers = new Set(diagnosticsWithServers.map((item) => item.serverID))
+            if (fileDiagnostics.length === 1 || uniqueServers.size <= 1) {
               expect(formatted).not.toContain("---")
             }
           }

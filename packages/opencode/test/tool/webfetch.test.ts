@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test"
+import { describe, expect, test, beforeEach, afterEach, vi } from "bun:test"
 import { WebFetchTool } from "../../src/tool/webfetch"
 import { Config } from "../../src/config/config"
 import { Permission } from "../../src/permission"
@@ -6,25 +6,30 @@ import { Permission } from "../../src/permission"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
 const webFetchTool = await WebFetchTool.init()
+const originalFetch = global.fetch
 
 describe("tool.webfetch", () => {
   beforeEach(() => {
-    // Mock Config to return default permissions
-    vi.mocked(Config.get).mockResolvedValue({
+    vi.spyOn(Config, "get").mockResolvedValue({
       permission: {
         webfetch: "allow",
       },
     })
 
     // Mock Permission.ask to resolve immediately
-    vi.mocked(Permission.ask).mockResolvedValue(undefined)
+    vi.spyOn(Permission, "ask").mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+    vi.restoreAllMocks()
   })
 
   test("should fetch content from valid URL", async () => {

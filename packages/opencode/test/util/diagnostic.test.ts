@@ -16,7 +16,7 @@ import {
 function createDiagnostic(message: string, severity: number = 1, line: number = 1, character: number = 1): Diagnostic {
   return {
     message,
-    severity,
+    severity: severity as Diagnostic["severity"],
     range: {
       start: { line, character },
       end: { line, character: character + message.length },
@@ -249,7 +249,6 @@ describe("diagnostic utilities", () => {
     test("should reject invalid diagnostic structure", () => {
       const invalid = { message: "test" } // missing range
       const result = validateDiagnostic(invalid)
-      console.log("Invalid diagnostic result:", result)
       expect(result).toBe(false)
     })
 

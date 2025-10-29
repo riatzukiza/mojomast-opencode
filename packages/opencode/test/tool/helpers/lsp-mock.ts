@@ -2,7 +2,13 @@ import { MockLSP } from "../mocks/lsp"
 
 // Helper to mock LSP module in tests
 export function mockLSPModule() {
-  const originalLSP = require("../../src/lsp")
+  const cacheKey = require.resolve("../../src/lsp")
+  if (!require.cache[cacheKey]) {
+    require(cacheKey)
+  }
+
+  const entry = require.cache[cacheKey]
+  const originalExports = entry?.exports
 
   const mockLSP = {
     diagnostics: MockLSP.diagnostics.bind(MockLSP),
@@ -10,12 +16,15 @@ export function mockLSPModule() {
     Diagnostic: MockLSP.Diagnostic,
   }
 
-  // Replace the module
-  require.cache[require.resolve("../../src/lsp")].exports = mockLSP
+  if (entry) {
+    entry.exports = mockLSP
+  }
 
   return () => {
-    // Restore original module
-    require.cache[require.resolve("../../src/lsp")].exports = originalLSP
+    const restoreEntry = require.cache[cacheKey]
+    if (restoreEntry) {
+      restoreEntry.exports = originalExports
+    }
   }
 }
 
