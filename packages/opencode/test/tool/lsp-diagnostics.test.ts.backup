@@ -10,9 +10,9 @@ import { mockLSPModule, setupLSPDiagnostics, setupErrorFile, setupCleanFile } fr
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 

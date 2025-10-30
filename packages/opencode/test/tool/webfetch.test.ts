@@ -6,9 +6,9 @@ import { Permission } from "../../src/permission"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 

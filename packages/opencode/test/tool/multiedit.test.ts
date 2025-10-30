@@ -9,9 +9,9 @@ import { FileTime } from "../../src/file/time"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 

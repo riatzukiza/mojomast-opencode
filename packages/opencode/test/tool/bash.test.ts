@@ -6,9 +6,9 @@ import { Instance } from "../../src/project/instance"
 const ctx = {
   sessionID: "test",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 

@@ -7,9 +7,9 @@ import { tmpdir } from "../fixture/fixture"
 const ctx = {
   sessionID: "test-session",
   messageID: "",
-  toolCallID: "",
+  callID: "",
   agent: "build",
-  abort: AbortSignal.any([]),
+  abort: new AbortController().signal,
   metadata: () => {},
 }
 
