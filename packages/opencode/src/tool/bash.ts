@@ -50,6 +50,7 @@ export const BashTool = Tool.define("bash", {
   parameters: z.object({
     command: z.string().describe("The command to execute"),
     timeout: z.number().describe("Optional timeout in milliseconds").optional(),
+    cwd: z.string().describe("The working directory for the command. Must be within the project directory. If not specified, uses the project root directory.").optional(),
     description: z
       .string()
       .describe(
@@ -63,6 +64,30 @@ export const BashTool = Tool.define("bash", {
       )
     }
     const timeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT, MAX_TIMEOUT)
+    
+    // Validate and resolve cwd parameter
+    let workingDirectory = Instance.directory
+    if (params.cwd) {
+      const resolvedCwd = await $`realpath ${params.cwd}`
+        .cwd(Instance.directory)
+        .quiet()
+        .nothrow()
+        .text()
+        .then((x) => x.trim())
+      
+      if (!resolvedCwd) {
+        throw new Error(`Invalid working directory: ${params.cwd}`)
+      }
+      
+      if (!Filesystem.contains(Instance.directory, resolvedCwd)) {
+        throw new Error(
+          `Working directory ${resolvedCwd} is outside of project directory ${Instance.directory}`,
+        )
+      }
+      
+      workingDirectory = resolvedCwd
+    }
+    
     const tree = await parser().then((p) => p.parse(params.command))
     const permissions = await Agent.get(ctx.agent).then((x) => x.permission.bash)
 
@@ -89,6 +114,7 @@ export const BashTool = Tool.define("bash", {
         for (const arg of command.slice(1)) {
           if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
           const resolved = await $`realpath ${arg}`
+            .cwd(workingDirectory)
             .quiet()
             .nothrow()
             .text()
@@ -158,7 +184,7 @@ export const BashTool = Tool.define("bash", {
 
     const proc = spawn(params.command, {
       shell: true,
-      cwd: Instance.directory,
+      cwd: workingDirectory,
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
     })
