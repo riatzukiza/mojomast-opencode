@@ -12,6 +12,7 @@ import {
   Part,
   DiffChanges,
   ProgressCircle,
+  Message,
 } from "@opencode-ai/ui"
 import { FileIcon } from "@/ui"
 import FileTree from "@/components/file-tree"
@@ -35,9 +36,8 @@ import type { JSX } from "solid-js"
 import { Code } from "@/components/code"
 import { useSync } from "@/context/sync"
 import { useSDK } from "@/context/sdk"
-import { Message } from "@/components/message"
 import { type AssistantMessage as AssistantMessageType } from "@opencode-ai/sdk"
-import { Markdown } from "@/components/markdown"
+import { Markdown } from "@opencode-ai/ui"
 
 export default function Page() {
   const local = useLocal()
@@ -384,6 +384,7 @@ export default function Page() {
               {(session) => {
                 const diffs = createMemo(() => session.summary?.diffs ?? [])
                 const filesChanged = createMemo(() => diffs().length)
+                const updated = DateTime.fromMillis(session.time.updated)
                 return (
                   <Tooltip placement="right" value={session.title}>
                     <div>
@@ -392,7 +393,14 @@ export default function Page() {
                           {session.title}
                         </span>
                         <span class="text-12-regular text-text-weak text-right whitespace-nowrap">
-                          {DateTime.fromMillis(session.time.updated).toRelative()}
+                          {Math.abs(updated.diffNow().as("seconds")) < 60
+                            ? "Now"
+                            : updated
+                                .toRelative({ style: "short", unit: ["days", "hours", "minutes"] })
+                                ?.replace(" ago", "")
+                                ?.replace(/ days?/, "d")
+                                ?.replace(" min.", "m")
+                                ?.replace(" hr.", "h")}
                         </span>
                       </div>
                       <div class="flex justify-between items-center self-stretch">
