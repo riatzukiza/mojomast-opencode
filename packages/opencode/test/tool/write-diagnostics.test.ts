@@ -359,7 +359,7 @@ describe("tool.write diagnostics integration", () => {
     await Instance.provide({
       directory: fixture.path,
       fn: async () => {
-        const files = []
+        const files: string[] = []
 
         // Create multiple files concurrently
         for (let i = 0; i < 3; i++) {
