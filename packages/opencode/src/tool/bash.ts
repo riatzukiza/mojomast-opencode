@@ -2,17 +2,22 @@ import z from "zod"
 import { spawn } from "child_process"
 import { Tool } from "./tool"
 import DESCRIPTION from "./bash.txt"
+import { Permission } from "../permission"
+import { Filesystem } from "../util/filesystem"
+import { lazy } from "../util/lazy"
 import { Log } from "../util/log"
+import { Wildcard } from "../util/wildcard"
+import { $ } from "bun"
 import { Instance } from "../project/instance"
+import { Agent } from "../agent/agent"
 
 const MAX_OUTPUT_LENGTH = 30_000
 const DEFAULT_TIMEOUT = 1 * 60 * 1000
 const MAX_TIMEOUT = 10 * 60 * 1000
 const SIGKILL_TIMEOUT_MS = 200
 
-export const log = Log.create({ service: "bash-tool" })
+const log = Log.create({ service: "bash-tool" })
 
-/*
 const parser = lazy(async () => {
   try {
     const { default: Parser } = await import("tree-sitter")
@@ -33,13 +38,12 @@ const parser = lazy(async () => {
     const { default: bashWasm } = await import("tree-sitter-bash/tree-sitter-bash.wasm" as string, {
       with: { type: "wasm" },
     })
-    const bashLanguage = await Language.load(bashWasm)
+    const bashLanguage = await Parser.Language.load(bashWasm)
     const p = new Parser()
     p.setLanguage(bashLanguage)
     return p
   }
 })
-*/
 
 export const BashTool = Tool.define("bash", {
   description: DESCRIPTION,
@@ -49,7 +53,6 @@ export const BashTool = Tool.define("bash", {
     cwd: z.string().describe("The working directory for the command. Must be within the project directory. If not specified, uses the project root directory.").optional(),
     description: z
       .string()
-      .optional()
       .describe(
         "Clear, concise description of what this command does in 5-10 words. Examples:\nInput: ls\nOutput: Lists files in current directory\n\nInput: git status\nOutput: Shows working tree status\n\nInput: npm install\nOutput: Installs package dependencies\n\nInput: mkdir foo\nOutput: Creates directory 'foo'",
       ),
@@ -66,6 +69,7 @@ export const BashTool = Tool.define("bash", {
     let workingDirectory = Instance.directory
     if (params.cwd) {
       const resolvedCwd = await $`realpath ${params.cwd}`
+        .cwd(Instance.directory)
         .quiet()
         .nothrow()
         .text()
@@ -85,9 +89,6 @@ export const BashTool = Tool.define("bash", {
     }
     
     const tree = await parser().then((p) => p.parse(params.command))
-    if (!tree) {
-      throw new Error("Failed to parse command")
-    }
     const permissions = await Agent.get(ctx.agent).then((x) => x.permission.bash)
 
     const askPatterns = new Set<string>()
@@ -112,17 +113,8 @@ export const BashTool = Tool.define("bash", {
       if (["cd", "rm", "cp", "mv", "mkdir", "touch", "chmod", "chown"].includes(command[0])) {
         for (const arg of command.slice(1)) {
           if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
-
-          // Check for dangerous patterns
-          if (
-            command[0] === "rm" &&
-            arg === "." &&
-            command.slice(1).some((x) => x.includes("-r"))
-          ) {
-            throw new Error("rm -rf . is not allowed to be executed")
-          }
-
           const resolved = await $`realpath ${arg}`
+            .cwd(workingDirectory)
             .quiet()
             .nothrow()
             .text()
@@ -189,7 +181,6 @@ export const BashTool = Tool.define("bash", {
         },
       })
     }
-    */
 
     const proc = spawn(params.command, {
       shell: true,
@@ -204,7 +195,7 @@ export const BashTool = Tool.define("bash", {
     ctx.metadata({
       metadata: {
         output: "",
-        description: params.description || "Bash command execution",
+        description: params.description,
       },
     })
 
@@ -308,7 +299,7 @@ export const BashTool = Tool.define("bash", {
       title: params.command,
       metadata: {
         output,
-        exit: timedOut ? 1 : proc.exitCode,
+        exit: proc.exitCode,
         description: params.description,
       },
       output,
