@@ -131,6 +131,9 @@ jobs:
             return [pscustomobject]@{ Eicar = $eicarHits; Real = $realHits }
           }
 
+          # wait a bit before polling so telemetry has time to arrive on slow runners
+          Start-Sleep -Seconds 20
+
           # poll (up to 120s) because Defender threat history entries can be delayed
           $deadline = (Get-Date).AddSeconds(120)
           $interval = 5
