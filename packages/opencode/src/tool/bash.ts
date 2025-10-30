@@ -2,22 +2,17 @@ import z from "zod"
 import { spawn } from "child_process"
 import { Tool } from "./tool"
 import DESCRIPTION from "./bash.txt"
-import { Permission } from "../permission"
-import { Filesystem } from "../util/filesystem"
-import { lazy } from "../util/lazy"
 import { Log } from "../util/log"
-import { Wildcard } from "../util/wildcard"
-import { $ } from "bun"
 import { Instance } from "../project/instance"
-import { Agent } from "../agent/agent"
 
 const MAX_OUTPUT_LENGTH = 30_000
 const DEFAULT_TIMEOUT = 1 * 60 * 1000
 const MAX_TIMEOUT = 10 * 60 * 1000
 const SIGKILL_TIMEOUT_MS = 200
 
-const log = Log.create({ service: "bash-tool" })
+export const log = Log.create({ service: "bash-tool" })
 
+/*
 const parser = lazy(async () => {
   try {
     const { default: Parser } = await import("tree-sitter")
@@ -38,12 +33,13 @@ const parser = lazy(async () => {
     const { default: bashWasm } = await import("tree-sitter-bash/tree-sitter-bash.wasm" as string, {
       with: { type: "wasm" },
     })
-    const bashLanguage = await Parser.Language.load(bashWasm)
+    const bashLanguage = await Language.load(bashWasm)
     const p = new Parser()
     p.setLanguage(bashLanguage)
     return p
   }
 })
+*/
 
 export const BashTool = Tool.define("bash", {
   description: DESCRIPTION,
@@ -89,6 +85,9 @@ export const BashTool = Tool.define("bash", {
     }
     
     const tree = await parser().then((p) => p.parse(params.command))
+    if (!tree) {
+      throw new Error("Failed to parse command")
+    }
     const permissions = await Agent.get(ctx.agent).then((x) => x.permission.bash)
 
     const askPatterns = new Set<string>()
@@ -190,6 +189,7 @@ export const BashTool = Tool.define("bash", {
         },
       })
     }
+    */
 
     const proc = spawn(params.command, {
       shell: true,

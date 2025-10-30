@@ -179,7 +179,7 @@ export namespace Config {
       {
         cwd: dir,
       },
-    )
+    ).catch(() => {})
   }
 
   const COMMAND_GLOB = new Bun.Glob("command/**/*.md")
@@ -466,6 +466,7 @@ export namespace Config {
       messages_undo: z.string().optional().default("<leader>u").describe("Undo message"),
       messages_redo: z.string().optional().default("<leader>r").describe("Redo message"),
       model_list: z.string().optional().default("<leader>m").describe("List available models"),
+      command_list: z.string().optional().default("ctrl+p").describe("List available commands"),
       model_cycle_recent: z.string().optional().default("f2").describe("Next recent model"),
       model_cycle_recent_reverse: z
         .string()
@@ -818,7 +819,10 @@ export namespace Config {
               const errMsg = `bad file reference: "${match}"`
               if (error.code === "ENOENT") {
                 throw new InvalidError(
-                  { path: configFilepath, message: errMsg + ` ${resolvedPath} does not exist` },
+                  {
+                    path: configFilepath,
+                    message: errMsg + ` ${resolvedPath} does not exist`,
+                  },
                   { cause: error },
                 )
               }
@@ -872,7 +876,10 @@ export namespace Config {
       return data
     }
 
-    throw new InvalidError({ path: configFilepath, issues: parsed.error.issues })
+    throw new InvalidError({
+      path: configFilepath,
+      issues: parsed.error.issues,
+    })
   }
   export const JsonError = NamedError.create(
     "ConfigJsonError",

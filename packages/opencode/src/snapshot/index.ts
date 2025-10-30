@@ -56,8 +56,7 @@ export namespace Snapshot {
         .trim()
         .split("\n")
         .map((x) => x.trim())
-        .filter(Boolean)
-        .map((x) => path.join(Instance.worktree, x)),
+        .filter(Boolean),
     }
   }
 
@@ -102,7 +101,8 @@ export namespace Snapshot {
             })
           } else {
             log.info("file did not exist in snapshot, deleting", { file })
-            await fs.unlink(file).catch(() => {})
+            const absolutePath = path.join(Instance.worktree, file)
+            await fs.unlink(absolutePath).catch(() => {})
           }
         }
         files.add(file)

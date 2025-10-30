@@ -47,6 +47,14 @@ export type KeybindsConfig = {
    */
   thinking_blocks?: string
   /**
+   * Toggle sidebar
+   */
+  sidebar_toggle?: string
+  /**
+   * View status
+   */
+  status_view?: string
+  /**
    * Export session to editor
    */
   session_export?: string
@@ -126,6 +134,10 @@ export type KeybindsConfig = {
    * List available models
    */
   model_list?: string
+  /**
+   * List available commands
+   */
+  command_list?: string
   /**
    * Next recent model
    */
@@ -778,11 +790,17 @@ export type FilePart = {
 
 export type ToolStatePending = {
   status: "pending"
+  input: {
+    [key: string]: unknown
+  }
+  raw: string
 }
 
 export type ToolStateRunning = {
   status: "running"
-  input: unknown
+  input: {
+    [key: string]: unknown
+  }
   title?: string
   metadata?: {
     [key: string]: unknown
@@ -1080,6 +1098,68 @@ export type Agent = {
   }
 }
 
+export type McpStatusConnected = {
+  status: "connected"
+}
+
+export type McpStatusDisabled = {
+  status: "disabled"
+}
+
+export type McpStatusFailed = {
+  status: "failed"
+  error: string
+}
+
+export type McpStatus = McpStatusConnected | McpStatusDisabled | McpStatusFailed
+
+export type LspStatus = {
+  id: string
+  name: string
+  root: string
+  status: "connected" | "error"
+}
+
+export type EventTuiPromptAppend = {
+  type: "tui.prompt.append"
+  properties: {
+    text: string
+  }
+}
+
+export type EventTuiCommandExecute = {
+  type: "tui.command.execute"
+  properties: {
+    command:
+      | (
+          | "session.list"
+          | "session.new"
+          | "session.share"
+          | "session.interrupt"
+          | "session.compact"
+          | "session.page.up"
+          | "session.page.down"
+          | "session.half.page.up"
+          | "session.half.page.down"
+          | "session.first"
+          | "session.last"
+          | "prompt.clear"
+          | "prompt.submit"
+          | "agent.cycle"
+        )
+      | string
+  }
+}
+
+export type EventTuiToastShow = {
+  type: "tui.toast.show"
+  properties: {
+    title?: string
+    message: string
+    variant: "info" | "success" | "warning" | "error"
+  }
+}
+
 export type OAuth = {
   type: "oauth"
   refresh: string
@@ -1112,6 +1192,13 @@ export type EventLspClientDiagnostics = {
   properties: {
     serverID: string
     path: string
+  }
+}
+
+export type EventLspUpdated = {
+  type: "lsp.updated"
+  properties: {
+    [key: string]: unknown
   }
 }
 
@@ -1255,16 +1342,10 @@ export type EventServerConnected = {
   }
 }
 
-export type EventIdeInstalled = {
-  type: "ide.installed"
-  properties: {
-    ide: string
-  }
-}
-
 export type Event =
   | EventInstallationUpdated
   | EventLspClientDiagnostics
+  | EventLspUpdated
   | EventMessageUpdated
   | EventMessageRemoved
   | EventMessagePartUpdated
@@ -1280,8 +1361,10 @@ export type Event =
   | EventSessionUpdated
   | EventSessionDeleted
   | EventSessionError
+  | EventTuiPromptAppend
+  | EventTuiCommandExecute
+  | EventTuiToastShow
   | EventServerConnected
-  | EventIdeInstalled
 
 export type ProjectListData = {
   body?: never
@@ -2449,8 +2532,30 @@ export type McpStatusResponses = {
   /**
    * MCP server status
    */
-  200: unknown
+  200: {
+    [key: string]: McpStatus
+  }
 }
+
+export type McpStatusResponse = McpStatusResponses[keyof McpStatusResponses]
+
+export type LspStatusData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/lsp"
+}
+
+export type LspStatusResponses = {
+  /**
+   * LSP server status
+   */
+  200: Array<LspStatus>
+}
+
+export type LspStatusResponse = LspStatusResponses[keyof LspStatusResponses]
 
 export type TuiAppendPromptData = {
   body?: {
@@ -2639,6 +2744,33 @@ export type TuiShowToastResponses = {
 }
 
 export type TuiShowToastResponse = TuiShowToastResponses[keyof TuiShowToastResponses]
+
+export type TuiPublishData = {
+  body?: EventTuiPromptAppend | EventTuiCommandExecute | EventTuiToastShow
+  path?: never
+  query?: {
+    directory?: string
+  }
+  url: "/tui/publish"
+}
+
+export type TuiPublishErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+}
+
+export type TuiPublishError = TuiPublishErrors[keyof TuiPublishErrors]
+
+export type TuiPublishResponses = {
+  /**
+   * Event published successfully
+   */
+  200: boolean
+}
+
+export type TuiPublishResponse = TuiPublishResponses[keyof TuiPublishResponses]
 
 export type TuiControlNextData = {
   body?: never

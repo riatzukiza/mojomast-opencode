@@ -126,7 +126,7 @@ test("binary file handling", async () => {
       await Bun.write(`${tmp.path}/image.png`, new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/image.png`)
+      expect(patch.files).toContain(`image.png`)
 
       await Snapshot.revert([patch])
       expect(await Bun.file(`${tmp.path}/image.png`).exists()).toBe(false)
@@ -195,9 +195,9 @@ test("special characters in filenames", async () => {
       await Bun.write(`${tmp.path}/file_with_underscores.txt`, "UNDERSCORES")
 
       const files = (await Snapshot.patch(before!)).files
-      expect(files).toContain(`${tmp.path}/file with spaces.txt`)
-      expect(files).toContain(`${tmp.path}/file-with-dashes.txt`)
-      expect(files).toContain(`${tmp.path}/file_with_underscores.txt`)
+      expect(files).toContain(`file with spaces.txt`)
+      expect(files).toContain(`file-with-dashes.txt`)
+      expect(files).toContain(`file_with_underscores.txt`)
     },
   })
 })
@@ -249,7 +249,7 @@ test("revert non-existent file", async () => {
         Snapshot.revert([
           {
             hash: before!,
-            files: [`${tmp.path}/nonexistent.txt`],
+            files: [`nonexistent.txt`],
           },
         ]),
       ).resolves.toBeUndefined()
@@ -301,7 +301,7 @@ test("very long filenames", async () => {
       await Bun.write(longFile, "long filename content")
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(longFile)
+      expect(patch.files).toContain(longName)
 
       await Snapshot.revert([patch])
       expect(await Bun.file(longFile).exists()).toBe(false)
@@ -322,9 +322,9 @@ test("hidden files", async () => {
       await Bun.write(`${tmp.path}/.config`, "config content")
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/.hidden`)
-      expect(patch.files).toContain(`${tmp.path}/.gitignore`)
-      expect(patch.files).toContain(`${tmp.path}/.config`)
+      expect(patch.files).toContain(`.hidden`)
+      expect(patch.files).toContain(`.gitignore`)
+      expect(patch.files).toContain(`.config`)
     },
   })
 })
@@ -343,8 +343,8 @@ test("nested symlinks", async () => {
       await $`ln -s ${tmp.path}/sub ${tmp.path}/sub-link`.quiet()
 
       const patch = await Snapshot.patch(before!)
-      expect(patch.files).toContain(`${tmp.path}/sub/dir/link.txt`)
-      expect(patch.files).toContain(`${tmp.path}/sub-link`)
+      expect(patch.files).toContain(`sub/dir/link.txt`)
+      expect(patch.files).toContain(`sub-link`)
     },
   })
 })
@@ -402,11 +402,11 @@ test("gitignore changes", async () => {
       const patch = await Snapshot.patch(before!)
 
       // Should track gitignore itself
-      expect(patch.files).toContain(`${tmp.path}/.gitignore`)
+      expect(patch.files).toContain(`.gitignore`)
       // Should track normal files
-      expect(patch.files).toContain(`${tmp.path}/normal.txt`)
+      expect(patch.files).toContain(`normal.txt`)
       // Should not track ignored files (git won't see them)
-      expect(patch.files).not.toContain(`${tmp.path}/test.ignored`)
+      expect(patch.files).not.toContain(`test.ignored`)
     },
   })
 })
@@ -451,7 +451,7 @@ test("snapshot state isolation between projects", async () => {
       const before1 = await Snapshot.track()
       await Bun.write(`${tmp1.path}/project1.txt`, "project1 content")
       const patch1 = await Snapshot.patch(before1!)
-      expect(patch1.files).toContain(`${tmp1.path}/project1.txt`)
+      expect(patch1.files).toContain(`project1.txt`)
     },
   })
 
@@ -461,10 +461,10 @@ test("snapshot state isolation between projects", async () => {
       const before2 = await Snapshot.track()
       await Bun.write(`${tmp2.path}/project2.txt`, "project2 content")
       const patch2 = await Snapshot.patch(before2!)
-      expect(patch2.files).toContain(`${tmp2.path}/project2.txt`)
+      expect(patch2.files).toContain(`project2.txt`)
 
       // Ensure project1 files don't appear in project2
-      expect(patch2.files).not.toContain(`${tmp1?.path}/project1.txt`)
+      expect(patch2.files).not.toContain(`project1.txt`)
     },
   })
 })
@@ -549,7 +549,7 @@ test("revert should not delete files that existed but were deleted in snapshot",
       await Bun.write(`${tmp.path}/a.txt`, "recreated content")
 
       const patch = await Snapshot.patch(snapshot2!)
-      expect(patch.files).toContain(`${tmp.path}/a.txt`)
+      expect(patch.files).toContain(`a.txt`)
 
       await Snapshot.revert([patch])
 
@@ -573,8 +573,8 @@ test("revert preserves file that existed in snapshot when deleted then recreated
       await Bun.write(`${tmp.path}/newfile.txt`, "new")
 
       const patch = await Snapshot.patch(snapshot!)
-      expect(patch.files).toContain(`${tmp.path}/existing.txt`)
-      expect(patch.files).toContain(`${tmp.path}/newfile.txt`)
+      expect(patch.files).toContain(`existing.txt`)
+      expect(patch.files).toContain(`newfile.txt`)
 
       await Snapshot.revert([patch])
 

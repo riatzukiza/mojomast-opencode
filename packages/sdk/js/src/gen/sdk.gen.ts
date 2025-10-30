@@ -105,6 +105,8 @@ import type {
   AppAgentsResponses,
   McpStatusData,
   McpStatusResponses,
+  LspStatusData,
+  LspStatusResponses,
   TuiAppendPromptData,
   TuiAppendPromptResponses,
   TuiAppendPromptErrors,
@@ -129,6 +131,9 @@ import type {
   TuiControlNextResponses,
   TuiControlResponseData,
   TuiControlResponseResponses,
+  TuiPublishData,
+  TuiPublishResponses,
+  TuiPublishErrors,
   AuthSetData,
   AuthSetResponses,
   AuthSetErrors,
@@ -788,6 +793,18 @@ class Control extends _HeyApiClient {
   }
 }
 
+class Lsp extends _HeyApiClient {
+  /**
+   * Get LSP server status
+   */
+  public status<ThrowOnError extends boolean = false>(options?: Options<LspStatusData, ThrowOnError>) {
+    return (options?.client ?? this._client).get<LspStatusResponses, unknown, ThrowOnError>({
+      url: "/lsp",
+      ...options,
+    })
+  }
+}
+
 class Tui extends _HeyApiClient {
   /**
    * Append prompt to the TUI
@@ -917,6 +934,20 @@ class Tui extends _HeyApiClient {
     })
   }
   control = new Control({ client: this._client })
+
+  /**
+   * Publish a TUI event
+   */
+  public publish<ThrowOnError extends boolean = false>(options?: Options<TuiPublishData, ThrowOnError>) {
+    return (options?.client ?? this._client).post<TuiPublishResponses, TuiPublishErrors, ThrowOnError>({
+      url: "/tui/publish",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    })
+  }
 }
 
 class Auth extends _HeyApiClient {
@@ -983,6 +1014,7 @@ export class OpencodeClient extends _HeyApiClient {
   file = new File({ client: this._client })
   app = new App({ client: this._client })
   mcp = new Mcp({ client: this._client })
+  lsp = new Lsp({ client: this._client })
   tui = new Tui({ client: this._client })
   auth = new Auth({ client: this._client })
   event = new Event({ client: this._client })

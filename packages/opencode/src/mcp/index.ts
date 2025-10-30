@@ -21,7 +21,37 @@ export namespace MCP {
     }),
   )
 
-  type MCPClient = Awaited<ReturnType<typeof experimental_createMCPClient>>
+  type Client = Awaited<ReturnType<typeof experimental_createMCPClient>>
+
+  export const Status = z
+    .discriminatedUnion("status", [
+      z
+        .object({
+          status: z.literal("connected"),
+        })
+        .meta({
+          ref: "MCPStatusConnected",
+        }),
+      z
+        .object({
+          status: z.literal("disabled"),
+        })
+        .meta({
+          ref: "MCPStatusDisabled",
+        }),
+      z
+        .object({
+          status: z.literal("failed"),
+          error: z.string(),
+        })
+        .meta({
+          ref: "MCPStatusFailed",
+        }),
+    ])
+    .meta({
+      ref: "MCPStatus",
+    })
+  export type Status = z.infer<typeof Status>
 
   const state = Instance.state(
     async () => {
@@ -40,6 +70,7 @@ export namespace MCP {
       )
 
       return {
+        status,
         clients,
         config,
       }
