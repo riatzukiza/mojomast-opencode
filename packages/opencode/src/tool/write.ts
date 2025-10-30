@@ -14,11 +14,15 @@ import { Agent } from "../agent/agent"
 export const WriteTool = Tool.define("write", {
   description: DESCRIPTION,
   parameters: z.object({
-    filePath: z.string().describe("The absolute path to the file to write (must be absolute, not relative)"),
+    filePath: z
+      .string()
+      .describe("The absolute path to the file to write (must be absolute, not relative)"),
     content: z.string().describe("The content to write to the file"),
   }),
   async execute(params, ctx) {
-    const filepath = path.isAbsolute(params.filePath) ? params.filePath : path.join(Instance.directory, params.filePath)
+    const filepath = path.isAbsolute(params.filePath)
+      ? params.filePath
+      : path.join(Instance.directory, params.filePath)
     if (!Filesystem.contains(Instance.directory, filepath)) {
       throw new Error(`File ${filepath} is not in the current working directory`)
     }
@@ -61,7 +65,7 @@ export const WriteTool = Tool.define("write", {
     }
 
     return {
-      title: path.relative(Instance.worktree, filepath),
+      title: filepath,
       metadata: {
         diagnostics,
         filepath,

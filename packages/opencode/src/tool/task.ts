@@ -11,11 +11,15 @@ import { SessionPrompt } from "../session/prompt"
 
 export const TaskTool = Tool.define("task", async () => {
   const agents = await Agent.list().then((x) => x.filter((a) => a.mode !== "primary"))
+  const agentList = agents
+    .map(
+      (a) =>
+        `- ${a.name}: ${a.description ?? "This subagent should only be called manually by the user."}`,
+    )
+    .join("\n")
   const description = DESCRIPTION.replace(
     "{agents}",
-    agents
-      .map((a) => `- ${a.name}: ${a.description ?? "This subagent should only be called manually by the user."}`)
-      .join("\n"),
+    agentList || "No specialized agents available.",
   )
   return {
     description,
@@ -26,7 +30,8 @@ export const TaskTool = Tool.define("task", async () => {
     }),
     async execute(params, ctx) {
       const agent = await Agent.get(params.subagent_type)
-      if (!agent) throw new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`)
+      if (!agent)
+        throw new Error(`Unknown agent type: ${params.subagent_type} is not a valid agent type`)
       const session = await Session.create({
         parentID: ctx.sessionID,
         title: params.description + ` (@${agent.name} subagent)`,
@@ -82,7 +87,9 @@ export const TaskTool = Tool.define("task", async () => {
       let all
       all = await Session.messages(session.id)
       all = all.filter((x) => x.info.role === "assistant")
-      all = all.flatMap((msg) => msg.parts.filter((x: any) => x.type === "tool") as MessageV2.ToolPart[])
+      all = all.flatMap(
+        (msg) => msg.parts.filter((x: any) => x.type === "tool") as MessageV2.ToolPart[],
+      )
       return {
         title: params.description,
         metadata: {
