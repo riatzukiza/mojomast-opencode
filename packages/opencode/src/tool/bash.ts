@@ -52,6 +52,7 @@ export const BashTool = Tool.define("bash", {
     timeout: z.number().describe("Optional timeout in milliseconds").optional(),
     description: z
       .string()
+      .optional()
       .describe(
         "Clear, concise description of what this command does in 5-10 words. Examples:\nInput: ls\nOutput: Lists files in current directory\n\nInput: git status\nOutput: Shows working tree status\n\nInput: npm install\nOutput: Installs package dependencies\n\nInput: mkdir foo\nOutput: Creates directory 'foo'",
       ),
@@ -90,7 +91,11 @@ export const BashTool = Tool.define("bash", {
           if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
 
           // Check for dangerous patterns
-          if (command[0] === "rm" && arg === "." && command.slice(1).some((x) => x.includes("-r"))) {
+          if (
+            command[0] === "rm" &&
+            arg === "." &&
+            command.slice(1).some((x) => x.includes("-r"))
+          ) {
             throw new Error("rm -rf . is not allowed to be executed")
           }
 
@@ -175,7 +180,7 @@ export const BashTool = Tool.define("bash", {
     ctx.metadata({
       metadata: {
         output: "",
-        description: params.description,
+        description: params.description || "Bash command execution",
       },
     })
 
