@@ -49,6 +49,17 @@ export class MockLSPService {
             codeDescription: { href: "https://typescript-eslint.io/rules/semi" },
           },
         ])
+      } else {
+        this.setDiagnostics(filePath, [
+          {
+            range: { start: { line: 0, character: 19 }, end: { line: 0, character: 22 } },
+            severity: 1,
+            source: "typescript",
+            message: "Type 'number' is not assignable to type 'string'.",
+            code: 2322,
+            codeDescription: { href: "https://typescript-eslint.io/rules/no-unsafe-assignment" },
+          },
+        ])
       }
     } else if (filePath.includes("warning")) {
       this.setDiagnostics(filePath, [
@@ -99,7 +110,10 @@ export class MockLSPService {
 export const mockLSP = new MockLSPService()
 
 // Setup function to configure mock for specific test scenarios
-export function setupMockLSP(scenario: "clean" | "error" | "syntax" | "warning" | "mixed", filePath: string) {
+export function setupMockLSP(
+  scenario: "clean" | "error" | "syntax" | "warning" | "mixed",
+  filePath: string,
+) {
   mockLSP.reset()
 
   switch (scenario) {
