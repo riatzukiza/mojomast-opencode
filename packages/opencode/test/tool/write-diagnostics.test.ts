@@ -149,7 +149,7 @@ describe("tool.write diagnostics integration", () => {
 
         // Refresh the file-tracking state by performing a fresh FileTime.read for that path
         await Bun.file(utilFile).text()
-        await FileTime.read(utilFile)
+        await FileTime.read(ctx.sessionID, utilFile)
 
         const result2 = await writeTool.execute(
           {
