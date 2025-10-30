@@ -40,8 +40,6 @@
     "@typescript-eslint/parser": "8.46.2",
     "@typescript/native-preview": "catalog:",
     "typescript": "catalog:",
-    "vscode-languageserver-types": "3.17.5"
-    "@typescript/native-preview": "catalog:",
     "vscode-languageserver-types": "3.17.5",
     "why-is-node-running": "3.2.2",
     "zod-to-json-schema": "3.24.5",
