@@ -207,7 +207,7 @@ export namespace LSP {
       return wait
     }).catch((err) => {
       log.error("failed to touch file", { err, file: input })
-    }
+    })
   }
 
   export async function diagnostics() {
@@ -325,15 +325,16 @@ export namespace LSP {
     }
 
     export function prettyWithServer(diagnostic: LSPClient.Diagnostic, serverID: string) {
-      const sanitizedServerID = serverID
-        .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
-        .replace(/[\r\n]/g, "") // Remove newlines
-        .replace(/[\[\]]/g, "") // Remove square brackets
-        .replace(/[{}|\\]/g, "") // Remove other potentially problematic chars
-        .replace(/[^a-zA-Z0-9_-]/g, "_") // Replace other unsafe chars with underscore
-        .substring(0, 50) // Limit length
-        .trim() || "Unknown"
-      
+      const sanitizedServerID =
+        serverID
+          .replace(/[\x00-\x1F\x7F]/g, "") // Remove control characters
+          .replace(/[\r\n]/g, "") // Remove newlines
+          .replace(/[\[\]]/g, "") // Remove square brackets
+          .replace(/[{}|\\]/g, "") // Remove other potentially problematic chars
+          .replace(/[^a-zA-Z0-9_-]/g, "_") // Replace other unsafe chars with underscore
+          .substring(0, 50) // Limit length
+          .trim() || "Unknown"
+
       return `${pretty(diagnostic)} [${sanitizedServerID}]`
     }
 
