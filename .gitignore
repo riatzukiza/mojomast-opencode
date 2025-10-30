@@ -11,3 +11,4 @@ tmp
 dist
 .turbo
 opencode-lsp-test/
+.serena/
