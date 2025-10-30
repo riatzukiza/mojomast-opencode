@@ -159,7 +159,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result2.title).toBe("util.ts")
+        expect(result2.title).toBe(utilFile)
         expect(result2.metadata.diagnostics).toBeDefined()
         expect(result2.metadata.exists).toBe(true)
 
