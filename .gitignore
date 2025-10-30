@@ -10,3 +10,7 @@ playground
 tmp
 dist
 .turbo
+
+opencode-lsp-test
+
+.serena/cache/typescript/document_symbols_cache_v23-06-25.pkl
