@@ -104,7 +104,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: testFile }, ctx)
 
-        expect(result.title).toBe("test.ts")
+        expect(result.title).toBe(fullTestFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -126,7 +126,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: testFile }, ctx)
 
-        expect(result.title).toBe("test.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -151,7 +151,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: mixedFile }, ctx)
 
-        expect(result.title).toBe("mixed.ts")
+        expect(result.title).toBe(mixedFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -178,7 +178,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: syntaxErrorFile }, ctx)
 
-        expect(result.title).toBe("syntax.ts")
+        expect(result.title).toBe(syntaxErrorFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -205,7 +205,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: emptyFile }, ctx)
 
-        expect(result.title).toBe("empty.ts")
+        expect(result.title).toBe(emptyFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -227,7 +227,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: whitespaceFile }, ctx)
 
-        expect(result.title).toBe("whitespace.ts")
+        expect(result.title).toBe(whitespaceFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -249,7 +249,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: commentFile }, ctx)
 
-        expect(result.title).toBe("comment.ts")
+        expect(result.title).toBe(commentFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
@@ -281,7 +281,8 @@ describe("tool.lsp_diagnostics", () => {
 
         expect(results).toHaveLength(3)
         results.forEach((result, index) => {
-          expect(result.title).toBe(`file${index}.ts`)
+          const expectedFile = path.join(fixture.path, `file${index}.ts`)
+          expect(result.title).toBe(expectedFile)
           expect(result.metadata.diagnostics).toBeDefined()
         })
       },
@@ -298,7 +299,7 @@ describe("tool.lsp_diagnostics", () => {
 
         // Should handle gracefully - either return empty diagnostics or specific error
         expect(result).toBeDefined()
-        expect(result.title).toBe("outside.ts")
+        expect(result.title).toBe(outsideFile)
       },
     })
   })
@@ -322,7 +323,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: specialFile }, ctx)
 
-        expect(result.title).toBe("file-with-special.ts")
+        expect(result.title).toBe(specialFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(typeof result.metadata.diagnostics).toBe("object")
         expect(Array.isArray(Object.keys(result.metadata.diagnostics))).toBe(true)
