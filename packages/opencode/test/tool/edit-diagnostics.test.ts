@@ -52,7 +52,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("test.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should show diagnostics in output if errors exist
@@ -86,7 +86,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("clean.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should not show error diagnostics for clean file
@@ -119,7 +119,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("introduce-error.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should show diagnostics after introducing error
@@ -152,7 +152,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("fix-error.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -187,7 +187,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("multiple-errors.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should show diagnostics for remaining errors
@@ -213,7 +213,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("new.ts")
+        expect(result.title).toBe(newFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should not show errors for clean new file
@@ -239,7 +239,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("error-new.ts")
+        expect(result.title).toBe(errorFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should show diagnostics for new file with errors
@@ -276,7 +276,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("large.ts")
+        expect(result.title).toBe(largeFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -303,7 +303,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("special.ts")
+        expect(result.title).toBe(specialFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -330,7 +330,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("remove.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -358,7 +358,7 @@ describe("tool.edit diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("replace-all.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Verify the file was actually changed
@@ -416,15 +416,19 @@ describe("tool.edit diagnostics integration", () => {
         const testFile = path.join(fixture.path, "test.ts")
 
         // Test missing filePath
-        await expect(editTool.execute({ oldString: "a", newString: "b" } as any, ctx)).rejects.toThrow(
-          "filePath is required",
-        )
+        await expect(
+          editTool.execute({ oldString: "a", newString: "b" } as any, ctx),
+        ).rejects.toThrow("filePath is required")
 
         // Test missing oldString
-        await expect(editTool.execute({ filePath: testFile, newString: "b" } as any, ctx)).rejects.toThrow("File")
+        await expect(
+          editTool.execute({ filePath: testFile, newString: "b" } as any, ctx),
+        ).rejects.toThrow("File")
 
         // Test missing newString
-        await expect(editTool.execute({ filePath: testFile, oldString: "a" } as any, ctx)).rejects.toThrow("File")
+        await expect(
+          editTool.execute({ filePath: testFile, oldString: "a" } as any, ctx),
+        ).rejects.toThrow("File")
       },
     })
   })
