@@ -17,8 +17,9 @@ export function sanitizeServerID(serverID: string): string {
 
   const singleTagMatch = serverID.match(/^<(\w+)>$/)
   const base = singleTagMatch ? singleTagMatch[1] : serverID.replace(/<[^>]*>/g, "")
+  const cleaned = base.replace(/[<>]/g, "")
 
-  return base
+  return cleaned
     .replace(/javascript:/gi, "") // Remove javascript protocol
     .replace(/data:/gi, "") // Remove data protocol
     .replace(/vbscript:/gi, "") // Remove vbscript protocol
