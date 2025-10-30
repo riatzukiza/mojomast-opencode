@@ -447,6 +447,8 @@ export namespace Server {
           }),
         ),
         async (c) => {
+          const sessionID = c.req.valid("param").id
+          await Session.remove(sessionID)
           await Bus.publish(TuiEvent.CommandExecute, {
             command: "session.list",
           })
