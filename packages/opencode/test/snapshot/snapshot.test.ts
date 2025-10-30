@@ -13,13 +13,8 @@ async function bootstrap() {
       const bContent = `B${unique}`
       await Bun.write(`${dir}/a.txt`, aContent)
       await Bun.write(`${dir}/b.txt`, bContent)
-      try {
-        await $`git add .`.cwd(dir).quiet()
-        await $`git commit --no-gpg-sign -m init`.cwd(dir).quiet()
-      } catch (error) {
-        console.warn("Git commands failed, continuing without git initialization")
-        // Don't re-throw, let tests handle missing git gracefully
-      }
+      await $`git add .`.cwd(dir).quiet()
+      await $`git commit --no-gpg-sign -m init`.cwd(dir).quiet()
       return {
         aContent,
         bContent,
@@ -34,14 +29,6 @@ test("tracks deleted files correctly", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`rm ${tmp.path}/a.txt`.quiet()
@@ -57,10 +44,6 @@ test("revert should remove new files", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/new.txt`, "NEW")
@@ -78,10 +61,6 @@ test("revert in subdirectory", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`mkdir -p ${tmp.path}/sub`.quiet()
@@ -102,10 +81,6 @@ test("multiple file operations", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`rm ${tmp.path}/a.txt`.quiet()
@@ -131,10 +106,6 @@ test("empty directory handling", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`mkdir ${tmp.path}/empty`.quiet()
@@ -150,10 +121,6 @@ test("binary file handling", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/image.png`, new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
@@ -173,10 +140,6 @@ test("symlink handling", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`ln -s ${tmp.path}/a.txt ${tmp.path}/link.txt`.quiet()
@@ -192,10 +155,6 @@ test("large file handling", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/large.txt`, "x".repeat(1024 * 1024))
@@ -211,10 +170,6 @@ test("nested directory revert", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`mkdir -p ${tmp.path}/level1/level2/level3`.quiet()
@@ -233,10 +188,6 @@ test("special characters in filenames", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/file with spaces.txt`, "SPACES")
@@ -271,10 +222,6 @@ test("patch with invalid hash", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Create a change
@@ -294,10 +241,6 @@ test("revert non-existent file", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Try to revert a file that doesn't exist in the snapshot
@@ -320,10 +263,6 @@ test("unicode filenames", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       const unicodeFiles = [
@@ -354,10 +293,6 @@ test("very long filenames", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       const longName = "a".repeat(200) + ".txt"
@@ -380,10 +315,6 @@ test("hidden files", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/.hidden`, "hidden content")
@@ -404,10 +335,6 @@ test("nested symlinks", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`mkdir -p ${tmp.path}/sub/dir`.quiet()
@@ -428,10 +355,6 @@ test("file permissions and ownership changes", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Change permissions multiple times
@@ -453,10 +376,6 @@ test("circular symlinks", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Create circular symlink
@@ -474,10 +393,6 @@ test("gitignore changes", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/.gitignore`, "*.ignored")
@@ -502,10 +417,6 @@ test("concurrent file operations during patch", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Start creating files
@@ -538,10 +449,6 @@ test("snapshot state isolation between projects", async () => {
     directory: tmp1.path,
     fn: async () => {
       const before1 = await Snapshot.track()
-      if (!before1) {
-        console.log("Git not available, skipping test")
-        return
-      }
       await Bun.write(`${tmp1.path}/project1.txt`, "project1 content")
       const patch1 = await Snapshot.patch(before1!)
       expect(patch1.files).toContain(`${tmp1.path}/project1.txt`)
@@ -552,10 +459,6 @@ test("snapshot state isolation between projects", async () => {
     directory: tmp2.path,
     fn: async () => {
       const before2 = await Snapshot.track()
-      if (!before2) {
-        console.log("Git not available, skipping test")
-        return
-      }
       await Bun.write(`${tmp2.path}/project2.txt`, "project2 content")
       const patch2 = await Snapshot.patch(before2!)
       expect(patch2.files).toContain(`${tmp2.path}/project2.txt`)
@@ -572,10 +475,6 @@ test("track with no changes returns same hash", async () => {
     directory: tmp.path,
     fn: async () => {
       const hash1 = await Snapshot.track()
-      if (!hash1) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(hash1).toBeTruthy()
 
       // Track again with no changes
@@ -595,10 +494,6 @@ test("diff function with various changes", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Make various changes
@@ -620,10 +515,6 @@ test("restore function", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       // Make changes
@@ -648,10 +539,6 @@ test("revert should not delete files that existed but were deleted in snapshot",
     directory: tmp.path,
     fn: async () => {
       const snapshot1 = await Snapshot.track()
-      if (!snapshot1) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(snapshot1).toBeTruthy()
 
       await $`rm ${tmp.path}/a.txt`.quiet()
@@ -679,10 +566,6 @@ test("revert preserves file that existed in snapshot when deleted then recreated
       await Bun.write(`${tmp.path}/existing.txt`, "original content")
 
       const snapshot = await Snapshot.track()
-      if (!snapshot) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(snapshot).toBeTruthy()
 
       await $`rm ${tmp.path}/existing.txt`.quiet()
@@ -708,19 +591,11 @@ test("diffFull with new file additions", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/new.txt`, "new content")
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -742,19 +617,11 @@ test("diffFull with file modifications", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/b.txt`, "modified content")
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -776,19 +643,11 @@ test("diffFull with file deletions", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await $`rm ${tmp.path}/a.txt`.quiet()
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -810,19 +669,11 @@ test("diffFull with multiple line additions", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/multi.txt`, "line1\nline2\nline3")
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -844,20 +695,12 @@ test("diffFull with addition and deletion", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/added.txt`, "added content")
       await $`rm ${tmp.path}/a.txt`.quiet()
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -886,10 +729,6 @@ test("diffFull with multiple additions and deletions", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/multi1.txt`, "line1\nline2\nline3")
@@ -898,10 +737,6 @@ test("diffFull with multiple additions and deletions", async () => {
       await $`rm ${tmp.path}/b.txt`.quiet()
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -936,17 +771,9 @@ test("diffFull with no changes", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -961,19 +788,11 @@ test("diffFull with binary file changes", async () => {
     directory: tmp.path,
     fn: async () => {
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/binary.bin`, new Uint8Array([0x00, 0x01, 0x02, 0x03]))
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)
@@ -993,19 +812,11 @@ test("diffFull with whitespace changes", async () => {
     fn: async () => {
       await Bun.write(`${tmp.path}/whitespace.txt`, "line1\nline2")
       const before = await Snapshot.track()
-      if (!before) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(before).toBeTruthy()
 
       await Bun.write(`${tmp.path}/whitespace.txt`, "line1\n\nline2\n")
 
       const after = await Snapshot.track()
-      if (!after) {
-        console.log("Git not available, skipping test")
-        return
-      }
       expect(after).toBeTruthy()
 
       const diffs = await Snapshot.diffFull(before!, after!)

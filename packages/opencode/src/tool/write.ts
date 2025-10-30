@@ -61,7 +61,7 @@ export const WriteTool = Tool.define("write", {
     }
 
     return {
-      title: path.basename(filepath),
+      title: path.relative(Instance.worktree, filepath),
       metadata: {
         diagnostics,
         filepath,
