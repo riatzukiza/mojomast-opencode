@@ -49,4 +49,75 @@ describe("tool.bash", () => {
       },
     })
   })
+
+  test("should handle non-existent commands", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const result = await bash.execute(
+          {
+            command: "nonexistent-command-12345",
+            description: "Test non-existent command",
+          },
+          ctx,
+        )
+
+        expect(result.metadata.exit).toBeGreaterThan(0)
+        expect(result.metadata.output).toContain("not found")
+      },
+    })
+  })
+
+  test("should handle command timeout", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const result = await bash.execute(
+          {
+            command: "sleep 10",
+            description: "Test command timeout",
+            timeout: 100, // 100ms timeout
+          },
+          ctx,
+        )
+
+        expect(result.metadata.exit).toBeGreaterThan(0)
+        expect(result.metadata.output).toContain("timed out")
+      },
+    })
+  })
+
+  test("should handle invalid command parameters", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        await expect(
+          bash.execute(
+            {
+              command: "",
+              description: "Empty command",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow()
+      },
+    })
+  })
+
+  test("should handle dangerous commands", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        await expect(
+          bash.execute(
+            {
+              command: "rm -rf .",
+              description: "Dangerous command",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("not allowed to be executed")
+      },
+    })
+  })
 })
