@@ -11,11 +11,13 @@
     "./fonts/*": "./src/assets/fonts/*"
   },
   "scripts": {
+    "typecheck": "tsgo --noEmit",
     "dev": "vite",
     "generate:tailwind": "bun run script/tailwind.ts"
   },
   "devDependencies": {
     "@types/bun": "catalog:",
+    "@tsconfig/node22": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
@@ -24,6 +26,7 @@
   },
   "dependencies": {
     "@kobalte/core": "catalog:",
+    "@opencode-ai/sdk": "workspace:*",
     "@pierre/precision-diffs": "catalog:",
     "@solidjs/meta": "catalog:",
     "fuzzysort": "catalog:",

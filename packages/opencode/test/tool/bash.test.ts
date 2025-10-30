@@ -50,6 +50,77 @@ describe("tool.bash", () => {
     })
   })
 
+  test("cwd parameter with valid directory", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const result = await bash.execute(
+          {
+            command: "pwd",
+            cwd: projectRoot,
+            description: "Get current working directory",
+          },
+          ctx,
+        )
+        expect(result.metadata.exit).toBe(0)
+        expect(result.metadata.output).toContain(projectRoot)
+      },
+    })
+  })
+
+  test("cwd parameter outside project should fail", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        expect(
+          bash.execute(
+            {
+              command: "pwd",
+              cwd: "/tmp",
+              description: "Try to use cwd outside project",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Working directory")
+      },
+    })
+  })
+
+  test("cwd parameter with relative path", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const result = await bash.execute(
+          {
+            command: "pwd",
+            cwd: path.join(projectRoot, "src"),
+            description: "Use absolute path for cwd",
+          },
+          ctx,
+        )
+        expect(result.metadata.exit).toBe(0)
+        expect(result.metadata.output).toContain("/src")
+      },
+    })
+  })
+
+  test("default behavior without cwd parameter", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const result = await bash.execute(
+          {
+            command: "pwd",
+            description: "Get default working directory",
+          },
+          ctx,
+        )
+        expect(result.metadata.exit).toBe(0)
+        expect(result.metadata.output).toContain(projectRoot)
+      },
+    })
+  })
+
   test("should handle non-existent commands", async () => {
     await Instance.provide({
       directory: projectRoot,
