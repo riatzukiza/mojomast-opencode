@@ -138,7 +138,7 @@ describe("tool.registry", () => {
           init: async () => ({
             parameters: z.object({}),
             description: "Test custom tool",
-            execute: async () => ({
+            execute: async (args, ctx) => ({
               title: "Test",
               output: "test output",
               metadata: {},
