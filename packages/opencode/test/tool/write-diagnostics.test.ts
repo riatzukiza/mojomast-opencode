@@ -147,9 +147,9 @@ describe("tool.write diagnostics integration", () => {
 
         await fs.writeFile(utilFile, "export const helper: string = 123;")
 
-        // Read the file again to satisfy FileTime.assert after direct write
+        // Refresh the file-tracking state by performing a fresh FileTime.read for that path
         await Bun.file(utilFile).text()
-        FileTime.read(ctx.sessionID, utilFile)
+        await FileTime.read(utilFile)
 
         const result2 = await writeTool.execute(
           {
@@ -166,6 +166,7 @@ describe("tool.write diagnostics integration", () => {
         // Should show project diagnostics if other files are affected
         if (result2.output) {
           expect(typeof result2.output).toBe("string")
+          expect(result2.output).toContain("<project_diagnostics>")
         }
       },
     })
