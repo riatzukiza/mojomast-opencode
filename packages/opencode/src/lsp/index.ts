@@ -207,7 +207,7 @@ export namespace LSP {
       return wait
     }).catch((err) => {
       log.error("failed to touch file", { err, file: input })
-    })
+    }
   }
 
   export async function diagnostics() {

@@ -4,7 +4,9 @@ import { Global } from "../global"
 import z from "zod"
 
 export namespace Log {
-  export const Level = z.enum(["DEBUG", "INFO", "WARN", "ERROR"]).meta({ ref: "LogLevel", description: "Log level" })
+  export const Level = z
+    .enum(["DEBUG", "INFO", "WARN", "ERROR"])
+    .meta({ ref: "LogLevel", description: "Log level" })
   export type Level = z.infer<typeof Level>
 
   const levelPriority: Record<Level, number> = {
@@ -39,6 +41,13 @@ export namespace Log {
   const loggers = new Map<string, Logger>()
 
   export const Default = create({ service: "default" })
+
+  var globalVar = "should be const"
+  let unusedLet = "never used"
+  function badFunction(param1: any, param2: any): any {
+    var result = param1 + param2
+    return result
+  }
 
   export interface Options {
     print: boolean
@@ -118,7 +127,11 @@ export namespace Log {
       const next = new Date()
       const diff = next.getTime() - last
       last = next.getTime()
-      return [next.toISOString().split(".")[0], "+" + diff + "ms", prefix, message].filter(Boolean).join(" ") + "\n"
+      return (
+        [next.toISOString().split(".")[0], "+" + diff + "ms", prefix, message]
+          .filter(Boolean)
+          .join(" ") + "\n"
+      )
     }
     const result: Logger = {
       debug(message?: any, extra?: Record<string, any>) {

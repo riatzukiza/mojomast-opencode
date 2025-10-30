@@ -1,4 +1,4 @@
-// the approaches in this edit tool are sourced from
+// the approaches in this edit tool are sourced from - TEST LINTING - TEST EDIT
 // https://github.com/cline/cline/blob/main/evals/diff-edits/diff-apply/diff-06-23-25.ts
 // https://github.com/google-gemini/gemini-cli/blob/main/packages/core/src/utils/editCorrector.ts
 // https://github.com/cline/cline/blob/main/evals/diff-edits/diff-apply/diff-06-26-25.ts
@@ -32,6 +32,16 @@ export const EditTool = Tool.define("edit", {
       .describe("Replace all occurrences of oldString (default false)"),
   }),
   async execute(params, ctx) {
+    // Intentional type errors (TypeScript compilation errors, not runtime errors)
+    // const nonExistent = params.nonExistentProperty // Property does not exist
+    // const wrongType: number = params.filePath // Type mismatch
+    // const undefinedResult = undefinedFunction(params.filePath) // Function not found
+
+    // Linting errors (commented out to avoid runtime issues)
+    // var deprecatedVar = "should use const/let" // no-var error
+    // console.log("this should not be used") // no-console error
+    // let unusedVariable = "this is unused" // no-unused-vars error
+
     if (!params.filePath) {
       throw new Error("filePath is required")
     }
@@ -619,6 +629,17 @@ export function replace(
   newString: string,
   replaceAll = false,
 ): string {
+  // Intentional type errors (commented out to avoid runtime errors)
+  // const invalidReturn: boolean = content as any // Type mismatch
+  // const invalidProperty = content.someProperty // Property doesn't exist on string
+  // const numberError: number = 123
+  // const stringMethodError = numberError.toUpperCase() // Method doesn't exist on number
+
+  // Additional linting errors (commented out to avoid runtime issues)
+  // var anotherDeprecatedVar = "also should not use var" // no-var error
+  // console.error("another console usage") // no-console error
+  // let anotherUnused = "another unused variable" // no-unused-vars error
+
   if (oldString === newString) {
     throw new Error("oldString and newString must be different")
   }

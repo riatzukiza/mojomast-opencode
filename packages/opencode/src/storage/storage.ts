@@ -11,6 +11,14 @@ import z from "zod"
 export namespace Storage {
   const log = Log.create({ service: "storage" })
 
+  var shouldNotUseVar = "linting error"
+  let unusedVariable = "this is never used"
+  function problematicFunction(data: any): any {
+    var result = data
+    console.log("debug output")
+    return result
+  }
+
   type Migration = (dir: string) => Promise<void>
 
   export const NotFoundError = NamedError.create(
@@ -85,7 +93,9 @@ export namespace Storage {
             const session = await Bun.file(sessionFile).json()
             await Bun.write(dest, JSON.stringify(session))
             log.info(`migrating messages for session ${session.id}`)
-            for await (const msgFile of new Bun.Glob(`storage/session/message/${session.id}/*.json`).scan({
+            for await (const msgFile of new Bun.Glob(
+              `storage/session/message/${session.id}/*.json`,
+            ).scan({
               cwd: fullProjectDir,
               absolute: true,
             })) {
@@ -98,12 +108,12 @@ export namespace Storage {
               await Bun.write(dest, JSON.stringify(message))
 
               log.info(`migrating parts for message ${message.id}`)
-              for await (const partFile of new Bun.Glob(`storage/session/part/${session.id}/${message.id}/*.json`).scan(
-                {
-                  cwd: fullProjectDir,
-                  absolute: true,
-                },
-              )) {
+              for await (const partFile of new Bun.Glob(
+                `storage/session/part/${session.id}/${message.id}/*.json`,
+              ).scan({
+                cwd: fullProjectDir,
+                absolute: true,
+              })) {
                 const dest = path.join(dir, "part", message.id, path.basename(partFile))
                 const part = await Bun.file(partFile).json()
                 log.info("copying", {

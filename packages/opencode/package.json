@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "typecheck": "tsgo --noEmit",
+    "lint": "eslint src/",
     "test": "bun test",
     "build": "./script/build.ts",
     "dev": "bun run --conditions=browser ./src/index.ts",
@@ -20,8 +21,10 @@
   "devDependencies": {
     "@ai-sdk/amazon-bedrock": "2.2.10",
     "@ai-sdk/google-vertex": "3.0.16",
+    "@eslint/js": "9.38.0",
     "@babel/core": "7.28.4",
     "@octokit/webhooks-types": "7.6.1",
+    "@opencode-ai/script": "workspace:*",
     "@parcel/watcher-darwin-arm64": "2.5.1",
     "@parcel/watcher-darwin-x64": "2.5.1",
     "@parcel/watcher-linux-arm64-glibc": "2.5.1",
@@ -33,7 +36,11 @@
     "@types/bun": "catalog:",
     "@types/turndown": "5.0.5",
     "@types/yargs": "17.0.33",
+    "@typescript-eslint/eslint-plugin": "8.46.2",
+    "@typescript-eslint/parser": "8.46.2",
+    "@typescript/native-preview": "catalog:",
     "typescript": "catalog:",
+    "vscode-languageserver-types": "3.17.5"
     "@typescript/native-preview": "catalog:",
     "vscode-languageserver-types": "3.17.5",
     "why-is-node-running": "3.2.2",

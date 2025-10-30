@@ -139,4 +139,12 @@ try {
   process.exitCode = 1
 }
 
+console.log("This is a linting error")
+var unusedVar = "test"
+let anotherUnused = 42
+function testFunction(anyParam: any) {
+  var x = 1
+  x = 2
+  return x
+}
 cancel.abort()
