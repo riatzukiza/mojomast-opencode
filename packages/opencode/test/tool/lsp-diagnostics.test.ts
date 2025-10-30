@@ -37,7 +37,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: nonExistentFile }, ctx)
 
-        expect(result.title).toBe("nonexistent.ts")
+        expect(result.title).toBe(nonExistentFile)
         expect(result.output).toBe("No errors found")
         expect(result.metadata.diagnostics).toEqual({})
         expect(Object.keys(result.metadata.diagnostics)).toHaveLength(0)
@@ -54,7 +54,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: cleanFile }, ctx)
 
-        expect(result.title).toBe("clean.ts")
+        expect(result.title).toBe(cleanFile)
         expect(result.output).toBe("No errors found")
         expect(result.metadata.diagnostics).toEqual({})
         expect(Object.keys(result.metadata.diagnostics)).toHaveLength(0)
@@ -71,7 +71,7 @@ describe("tool.lsp_diagnostics", () => {
 
         const result = await lspDiagnosticTool.execute({ path: errorFile }, ctx)
 
-        expect(result.title).toBe("error.ts")
+        expect(result.title).toBe(errorFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Verify diagnostics structure is valid
@@ -83,7 +83,9 @@ describe("tool.lsp_diagnostics", () => {
           expect(typeof result.output).toBe("string")
           expect(result.output.length).toBeGreaterThan(0)
           // Check for common error patterns in TypeScript
-          expect(result.output).toMatch(/(Type 'number' is not assignable to type 'string'|type error)/i)
+          expect(result.output).toMatch(
+            /(Type 'number' is not assignable to type 'string'|type error)/i,
+          )
         } else {
           // If no LSP servers, should gracefully handle with no errors
           expect(result.output).toBe("No errors found")
@@ -142,7 +144,10 @@ describe("tool.lsp_diagnostics", () => {
       directory: fixture.path,
       fn: async () => {
         const mixedFile = path.join(fixture.path, "mixed.ts")
-        await fs.writeFile(mixedFile, "const x: string = 123; let y = x; // Type error + unused variable")
+        await fs.writeFile(
+          mixedFile,
+          "const x: string = 123; let y = x; // Type error + unused variable",
+        )
 
         const result = await lspDiagnosticTool.execute({ path: mixedFile }, ctx)
 
@@ -268,7 +273,9 @@ describe("tool.lsp_diagnostics", () => {
           return fileName
         })
 
-        const promises = testFiles.map((fileName) => lspDiagnosticTool.execute({ path: fileName }, ctx))
+        const promises = testFiles.map((fileName) =>
+          lspDiagnosticTool.execute({ path: fileName }, ctx),
+        )
 
         const results = await Promise.all(promises)
 
