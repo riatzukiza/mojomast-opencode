@@ -44,7 +44,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("error.ts")
+        expect(result.title).toBe(errorFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(result.metadata.exists).toBe(false)
 
@@ -70,7 +70,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("clean.ts")
+        expect(result.title).toBe(cleanFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(result.metadata.exists).toBe(false)
 
@@ -103,7 +103,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("overwrite.ts")
+        expect(result.title).toBe(testFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(result.metadata.exists).toBe(true)
 
@@ -191,7 +191,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("multi-error.ts")
+        expect(result.title).toBe(multiErrorFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Should show diagnostics for multiple errors
@@ -216,7 +216,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("empty.ts")
+        expect(result.title).toBe(emptyFile)
         expect(result.metadata.diagnostics).toBeDefined()
         expect(result.metadata.exists).toBe(false)
 
@@ -246,7 +246,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("comment.ts")
+        expect(result.title).toBe(commentFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Comments only should not have error diagnostics
@@ -277,7 +277,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("large.ts")
+        expect(result.title).toBe(largeFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -297,7 +297,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("special.ts")
+        expect(result.title).toBe(specialFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -321,7 +321,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("unicode.ts")
+        expect(result.title).toBe(unicodeFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -349,7 +349,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("config.json")
+        expect(result.title).toBe(jsonFile)
         expect(result.metadata.diagnostics).toBeDefined()
       },
     })
@@ -381,7 +381,8 @@ describe("tool.write diagnostics integration", () => {
 
         expect(results).toHaveLength(3)
         results.forEach((result, index) => {
-          expect(result.title).toBe(`concurrent${index}.ts`)
+          const expectedFile = files[index]
+          expect(result.title).toBe(expectedFile)
           expect(result.metadata.diagnostics).toBeDefined()
           expect(result.metadata.exists).toBe(false)
         })
@@ -416,7 +417,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("relative.ts")
+        expect(result.title).toBe(path.join(fixture.path, "relative.ts"))
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Verify file was created
@@ -444,7 +445,7 @@ describe("tool.write diagnostics integration", () => {
           ctx,
         )
 
-        expect(result.title).toBe("absolute.ts")
+        expect(result.title).toBe(absoluteFile)
         expect(result.metadata.diagnostics).toBeDefined()
 
         // Verify file was created
