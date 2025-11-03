@@ -62,6 +62,7 @@ export const BashTool = Tool.define("bash", {
     let workingDirectory = Instance.directory
     if (params.cwd) {
       const resolvedCwd = await $`realpath ${params.cwd}`
+        .cwd(Instance.directory)
         .quiet()
         .nothrow()
         .text()
@@ -110,6 +111,7 @@ export const BashTool = Tool.define("bash", {
         for (const arg of command.slice(1)) {
           if (arg.startsWith("-") || (command[0] === "chmod" && arg.startsWith("+"))) continue
           const resolved = await $`realpath ${arg}`
+            .cwd(workingDirectory)
             .quiet()
             .nothrow()
             .text()
