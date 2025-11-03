@@ -105,6 +105,10 @@ import type {
   AppAgentsResponses,
   McpStatusData,
   McpStatusResponses,
+  LspStatusData,
+  LspStatusResponses,
+  FormatterStatusData,
+  FormatterStatusResponses,
   TuiAppendPromptData,
   TuiAppendPromptResponses,
   TuiAppendPromptErrors,
@@ -125,6 +129,9 @@ import type {
   TuiExecuteCommandErrors,
   TuiShowToastData,
   TuiShowToastResponses,
+  TuiPublishData,
+  TuiPublishResponses,
+  TuiPublishErrors,
   TuiControlNextData,
   TuiControlNextResponses,
   TuiControlResponseData,
@@ -754,6 +761,34 @@ class Mcp extends _HeyApiClient {
   }
 }
 
+class Lsp extends _HeyApiClient {
+  /**
+   * Get LSP server status
+   */
+  public status<ThrowOnError extends boolean = false>(
+    options?: Options<LspStatusData, ThrowOnError>,
+  ) {
+    return (options?.client ?? this._client).get<LspStatusResponses, unknown, ThrowOnError>({
+      url: "/lsp",
+      ...options,
+    })
+  }
+}
+
+class Formatter extends _HeyApiClient {
+  /**
+   * Get formatter status
+   */
+  public status<ThrowOnError extends boolean = false>(
+    options?: Options<FormatterStatusData, ThrowOnError>,
+  ) {
+    return (options?.client ?? this._client).get<FormatterStatusResponses, unknown, ThrowOnError>({
+      url: "/formatter",
+      ...options,
+    })
+  }
+}
+
 class Control extends _HeyApiClient {
   /**
    * Get the next TUI request from the queue
@@ -916,6 +951,26 @@ class Tui extends _HeyApiClient {
       },
     })
   }
+
+  /**
+   * Publish a TUI event
+   */
+  public publish<ThrowOnError extends boolean = false>(
+    options?: Options<TuiPublishData, ThrowOnError>,
+  ) {
+    return (options?.client ?? this._client).post<
+      TuiPublishResponses,
+      TuiPublishErrors,
+      ThrowOnError
+    >({
+      url: "/tui/publish",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    })
+  }
   control = new Control({ client: this._client })
 }
 
@@ -983,6 +1038,8 @@ export class OpencodeClient extends _HeyApiClient {
   file = new File({ client: this._client })
   app = new App({ client: this._client })
   mcp = new Mcp({ client: this._client })
+  lsp = new Lsp({ client: this._client })
+  formatter = new Formatter({ client: this._client })
   tui = new Tui({ client: this._client })
   auth = new Auth({ client: this._client })
   event = new Event({ client: this._client })

@@ -76,13 +76,22 @@ export namespace SessionPrompt {
           callback: (input: MessageV2.WithParts) => void
         }[]
       >()
+      const pending = new Set<Promise<void>>()
+
+      const track = (promise: Promise<void>) => {
+        pending.add(promise)
+        promise.finally(() => pending.delete(promise))
+      }
 
       return {
         queued,
+        pending,
+        track,
       }
     },
     async (current) => {
       current.queued.clear()
+      await Promise.allSettled([...current.pending])
     },
   )
 
@@ -227,13 +236,15 @@ export namespace SessionPrompt {
       step++
       await processor.next(msgs.findLast((m) => m.info.role === "user")?.info.id!)
       if (step === 1) {
-        ensureTitle({
-          session,
-          history: msgs,
-          message: userMsg,
-          providerID: model.providerID,
-          modelID: model.info.id,
-        })
+        state().track(
+          ensureTitle({
+            session,
+            history: msgs,
+            message: userMsg,
+            providerID: model.providerID,
+            modelID: model.info.id,
+          }),
+        )
         SessionSummary.summarize({
           sessionID: input.sessionID,
           messageID: userMsg.info.id,
@@ -270,13 +281,15 @@ export namespace SessionPrompt {
               toolName: "invalid",
             }
           },
-          headers:
-            model.providerID === "opencode"
+          headers: {
+            ...(model.providerID === "opencode"
               ? {
                   "x-opencode-session": input.sessionID,
                   "x-opencode-request": userMsg.info.id,
                 }
-              : undefined,
+              : undefined),
+            ...model.info.headers,
+          },
           // set to 0, we handle loop
           maxRetries: 0,
           activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
@@ -534,7 +547,6 @@ export namespace SessionPrompt {
               args,
             },
           )
-          item.parameters.parse(args)
           const result = await item.execute(args, {
             sessionID: input.sessionID,
             abort: options.abortSignal!,
@@ -618,7 +630,7 @@ export namespace SessionPrompt {
 
         return {
           title: "",
-          metadata: {},
+          metadata: result.metadata ?? {},
           output,
         }
       }
@@ -1042,6 +1054,8 @@ export namespace SessionPrompt {
                   callID: value.id,
                   state: {
                     status: "pending",
+                    input: {},
+                    raw: "",
                   },
                 })
                 toolcalls[value.id] = part as MessageV2.ToolPart
@@ -1290,16 +1304,16 @@ export namespace SessionPrompt {
             part.state.status !== "completed" &&
             part.state.status !== "error"
           ) {
-            Session.updatePart({
+            await Session.updatePart({
               ...part,
               state: {
+                ...part.state,
                 status: "error",
                 error: "Tool execution aborted",
                 time: {
                   start: Date.now(),
                   end: Date.now(),
                 },
-                input: {},
               },
             })
           }
@@ -1579,6 +1593,7 @@ export namespace SessionPrompt {
       let index = 0
       template = template.replace(bashRegex, () => results[index++])
     }
+    template = template.trim()
 
     const parts = [
       {
@@ -1643,6 +1658,8 @@ export namespace SessionPrompt {
     })()
 
     const agent = await Agent.get(agentName)
+    let result: MessageV2.WithParts
+
     if ((agent.mode === "subagent" && command.subtask !== false) || command.subtask === true) {
       using abort = lock(input.sessionID)
 
@@ -1718,7 +1735,7 @@ export namespace SessionPrompt {
       }
       await Session.updatePart(toolPart)
 
-      const result = await TaskTool.init().then((t) =>
+      const taskResult = await TaskTool.init().then((t) =>
         t.execute(args, {
           sessionID: input.sessionID,
           abort: abort.signal,
@@ -1746,22 +1763,31 @@ export namespace SessionPrompt {
           },
           input: toolPart.state.input,
           title: "",
-          metadata: result.metadata,
-          output: result.output,
+          metadata: taskResult.metadata,
+          output: taskResult.output,
         }
         await Session.updatePart(toolPart)
       }
 
-      return { info: assistantMsg, parts: [toolPart] }
+      result = { info: assistantMsg, parts: [toolPart] }
+    } else {
+      result = await prompt({
+        sessionID: input.sessionID,
+        messageID: input.messageID,
+        model,
+        agent: agentName,
+        parts,
+      })
     }
 
-    return prompt({
+    Bus.publish(Command.Event.Executed, {
+      name: input.command,
       sessionID: input.sessionID,
-      messageID: input.messageID,
-      model,
-      agent: agentName,
-      parts,
+      arguments: input.arguments,
+      messageID: result.info.id,
     })
+
+    return result
   }
 
   async function ensureTitle(input: {
@@ -1793,7 +1819,7 @@ export namespace SessionPrompt {
         thinkingBudget: 0,
       }
     }
-    generateText({
+    await generateText({
       maxOutputTokens: small.info.reasoning ? 1500 : 20,
       providerOptions: ProviderTransform.providerOptions(small.npm, small.providerID, options),
       messages: [
@@ -1803,6 +1829,12 @@ export namespace SessionPrompt {
             content: x,
           }),
         ),
+        {
+          role: "user" as const,
+          content: `
+              The following is the text to summarize:
+            `,
+        },
         ...MessageV2.toModelMessage([
           {
             info: {
@@ -1817,6 +1849,7 @@ export namespace SessionPrompt {
           },
         ]),
       ],
+      headers: small.info.headers,
       model: small.language,
     })
       .then((result) => {
