@@ -163,7 +163,7 @@ export type KeybindsConfig = {
    */
   history_previous?: string
   /**
-   * Previous history item
+   * Next history item
    */
   history_next?: string
   /**
@@ -2346,6 +2346,7 @@ export type FindFilesData = {
   query: {
     directory?: string
     query: string
+    dirs?: "true" | "false"
   }
   url: "/find/file"
 }

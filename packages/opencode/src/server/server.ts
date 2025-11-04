@@ -10,6 +10,7 @@ import {
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { stream, streamSSE } from "hono/streaming"
+import { proxy } from "hono/proxy"
 import { Session } from "../session"
 import z from "zod"
 import { Provider } from "../provider/provider"
@@ -1106,13 +1107,16 @@ export namespace Server {
           "query",
           z.object({
             query: z.string(),
+            dirs: z.union([z.literal("true"), z.literal("false")]).optional(),
           }),
         ),
         async (c) => {
           const query = c.req.valid("query").query
+          const dirs = c.req.valid("query").dirs
           const results = await File.search({
             query,
             limit: 10,
+            dirs: dirs !== "false",
           })
           return c.json(results)
         },
@@ -1693,7 +1697,15 @@ export namespace Server {
             })
           })
         },
-      ),
+      )
+      .all("/*", async (c) => {
+        return proxy(`https://desktop.dev.opencode.ai${c.req.path}`, {
+          ...c.req,
+          headers: {
+            host: "desktop.dev.opencode.ai",
+          },
+        })
+      }),
   )
 
   export async function openapi() {

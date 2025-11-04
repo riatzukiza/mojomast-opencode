@@ -587,8 +587,12 @@ export function Prompt(props: PromptProps) {
                     return
                   }
 
-                  if (e.name === "up" && input.visualCursor.visualRow === 0) input.cursorOffset = 0
-                  if (e.name === "down" && input.visualCursor.visualRow === input.height - 1)
+                  if (keybind.match("history_previous", e) && input.visualCursor.visualRow === 0)
+                    input.cursorOffset = 0
+                  if (
+                    keybind.match("history_next", e) &&
+                    input.visualCursor.visualRow === input.height - 1
+                  )
                     input.cursorOffset = input.plainText.length
                 }
                 if (!autocomplete.visible) {
@@ -639,7 +643,7 @@ export function Prompt(props: PromptProps) {
                 } catch {}
 
                 const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-                if (lineCount >= 5) {
+                if (lineCount >= 5 && !sync.data.config.experimental?.disable_paste_summary) {
                   event.preventDefault()
                   const currentOffset = input.visualCursor.offset
                   const virtualText = `[Pasted ~${lineCount} lines]`
@@ -712,7 +716,8 @@ export function Prompt(props: PromptProps) {
             <Match when={props.hint}>{props.hint!}</Match>
             <Match when={true}>
               <text fg={theme.text}>
-                ctrl+p <span style={{ fg: theme.textMuted }}>commands</span>
+                {keybind.print("command_list")}{" "}
+                <span style={{ fg: theme.textMuted }}>commands</span>
               </text>
             </Match>
           </Switch>
