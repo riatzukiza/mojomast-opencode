@@ -34,7 +34,13 @@ export namespace Plugin {
     for (let plugin of plugins) {
       log.info("loading plugin", { path: plugin })
       if (!plugin.startsWith("file://")) {
-        const [pkg, version] = plugin.split("@")
+        const scoped = plugin.startsWith("@")
+        const spec = scoped ? plugin.slice(1) : plugin
+        const at = spec.lastIndexOf("@")
+        const name = at > 0 ? spec.slice(0, at) : spec
+        const pkg = scoped ? `@${name}` : name
+        const ver = at > 0 ? spec.slice(at + 1) : ""
+        const version = ver.length > 0 ? ver : undefined
         plugin = await BunProc.install(pkg, version ?? "latest")
       }
       const mod = await import(plugin)
