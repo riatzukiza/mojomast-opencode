@@ -34,14 +34,10 @@ export namespace Plugin {
     for (let plugin of plugins) {
       log.info("loading plugin", { path: plugin })
       if (!plugin.startsWith("file://")) {
-        const scoped = plugin.startsWith("@")
-        const spec = scoped ? plugin.slice(1) : plugin
-        const at = spec.lastIndexOf("@")
-        const name = at > 0 ? spec.slice(0, at) : spec
-        const pkg = scoped ? `@${name}` : name
-        const ver = at > 0 ? spec.slice(at + 1) : ""
-        const version = ver.length > 0 ? ver : undefined
-        plugin = await BunProc.install(pkg, version ?? "latest")
+        const lastAtIndex = plugin.lastIndexOf("@")
+        const pkg = lastAtIndex > 0 ? plugin.substring(0, lastAtIndex) : plugin
+        const version = lastAtIndex > 0 ? plugin.substring(lastAtIndex + 1) : "latest"
+        plugin = await BunProc.install(pkg, version)
       }
       const mod = await import(plugin)
       for (const [_name, fn] of Object.entries<PluginInstance>(mod)) {
