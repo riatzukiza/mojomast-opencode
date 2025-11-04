@@ -59,7 +59,7 @@ export function Autocomplete(props: {
 
   function insertPart(text: string, part: PromptInfo["parts"][number]) {
     const input = props.input()
-    const currentCursorOffset = input.visualCursor.offset
+    const currentCursorOffset = input.cursorOffset
 
     const charAfterCursor = props.value.at(currentCursorOffset)
     const needsSpace = charAfterCursor !== " "
