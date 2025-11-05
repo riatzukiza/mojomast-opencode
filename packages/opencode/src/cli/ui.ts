@@ -78,6 +78,21 @@ export namespace UI {
   }
 
   export function markdown(text: string): string {
-    return text
+    const { processAnsiForTerminal, sanitizeTextForTerminal, normalizePathForDisplay } = require("../util")
+    
+    // First normalize any paths in the markdown content for Git Bash compatibility
+    let processed = normalizePathForDisplay ? normalizePathForDisplay(text) : text
+    
+    // Sanitize the text for terminal compatibility
+    if (sanitizeTextForTerminal) {
+      processed = sanitizeTextForTerminal(processed)
+    }
+    
+    // Process ANSI sequences for the terminal
+    if (processAnsiForTerminal) {
+      processed = processAnsiForTerminal(processed)
+    }
+    
+    return processed
   }
 }

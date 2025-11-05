@@ -675,6 +675,13 @@ function UserMessage(props: {
   const text = createMemo(
     () => props.parts.flatMap((x) => (x.type === "text" && !x.synthetic ? [x] : []))[0],
   )
+  
+  const processedText = createMemo(() => {
+    if (!text()) return ""
+    const rawText = text()!.text
+    const sanitized = sanitizeTextForTerminal(rawText)
+    return processAnsiForTerminal(sanitized)
+  })
   const files = createMemo(() => props.parts.flatMap((x) => (x.type === "file" ? [x] : [])))
   const sync = useSync()
   const { theme } = useTheme()
@@ -703,7 +710,7 @@ function UserMessage(props: {
         borderColor={color()}
         flexShrink={0}
       >
-        <text fg={theme.text}>{text()?.text}</text>
+        <text fg={theme.text}>{processedText()}</text>
         <Show when={files().length}>
           <box flexDirection="row" paddingBottom={1} paddingTop={1} gap={1} flexWrap="wrap">
             <For each={files()}>
@@ -854,14 +861,21 @@ function ReasoningPart(props: { part: ReasoningPart; message: AssistantMessage }
 function TextPart(props: { part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { syntax } = useTheme()
+  
+  const processedText = createMemo(() => {
+    const rawText = props.part.text.trim()
+    const sanitized = sanitizeTextForTerminal(rawText)
+    return processAnsiForTerminal(sanitized)
+  })
+  
   return (
-    <Show when={props.part.text.trim()}>
+    <Show when={processedText()}>
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
         <code
           filetype="markdown"
           drawUnstyledText={false}
           syntaxStyle={syntax()}
-          content={props.part.text.trim()}
+          content={processedText()}
           conceal={ctx.conceal()}
         />
       </box>
@@ -1020,7 +1034,11 @@ ToolRegistry.register<typeof BashTool>({
   name: "bash",
   container: "block",
   render(props) {
-    const output = createMemo(() => Bun.stripANSI(props.metadata.output?.trim() ?? ""))
+    const output = createMemo(() => {
+      const rawOutput = props.metadata.output?.trim() ?? ""
+      const sanitized = sanitizeTextForTerminal(rawOutput)
+      return processAnsiForTerminal(sanitized)
+    })
     const { theme } = useTheme()
     return (
       <>

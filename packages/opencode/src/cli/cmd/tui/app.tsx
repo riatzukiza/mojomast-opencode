@@ -1,6 +1,7 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Clipboard } from "@tui/util/clipboard"
 import { TextAttributes } from "@opentui/core"
+import { showFallbackUI } from "./fallback-ui"
 import { RouteProvider, useRoute, type Route } from "@tui/context/route"
 import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal } from "solid-js"
 import { Installation } from "@/installation"
@@ -86,6 +87,80 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   })
 }
 
+async function detectNativeLibrarySupport(): Promise<{ supported: boolean; error?: string; suggestions?: string[] }> {
+  try {
+    // Test importing the core modules
+    const core = await import("@opentui/core")
+    const solid = await import("@opentui/solid")
+    
+    // Test if we can access the render function
+    if (typeof solid.render !== "function") {
+      return {
+        supported: false,
+        error: "Render function not available in @opentui/solid",
+        suggestions: [
+          "Try updating your dependencies: bun install",
+          "Check if your platform is supported: @opentui/core requires platform-specific native libraries",
+          "Use the web UI instead: opencode web"
+        ]
+      }
+    }
+
+    // Test basic terminal capabilities
+    if (!process.stdout.isTTY && !process.env.FORCE_TUI) {
+      return {
+        supported: false,
+        error: "TUI requires a terminal (TTY)",
+        suggestions: [
+          "Run in a proper terminal environment",
+          "Use FORCE_TUI=1 to override this check",
+          "Use the web UI instead: opencode web"
+        ]
+      }
+    }
+
+    return { supported: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    
+    // Check for common native library issues
+    if (errorMessage.includes("Cannot find module")) {
+      return {
+        supported: false,
+        error: `Native library not found: ${errorMessage}`,
+        suggestions: [
+          "Install missing dependencies: bun install",
+          "Check if your platform (${process.platform}-${process.arch}) is supported",
+          "Try rebuilding: bun run build",
+          "Use the web UI instead: opencode web"
+        ]
+      }
+    }
+    
+    if (errorMessage.includes("DYLD") || errorMessage.includes("DLL")) {
+      return {
+        supported: false,
+        error: `Native library loading failed: ${errorMessage}`,
+        suggestions: [
+          "Check system library dependencies",
+          "Try reinstalling: bun install --force",
+          "Use the web UI instead: opencode web"
+        ]
+      }
+    }
+
+    return {
+      supported: false,
+      error: `Native library error: ${errorMessage}`,
+      suggestions: [
+        "Check the error message above for specific issues",
+        "Try updating dependencies: bun install",
+        "Use the web UI instead: opencode web"
+      ]
+    }
+  }
+}
+
 export function tui(input: {
   url: string
   sessionID?: string
@@ -96,6 +171,37 @@ export function tui(input: {
 }) {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
+    // Detect native library support first
+    const detection = await detectNativeLibrarySupport()
+    if (!detection.supported) {
+      showFallbackUI({
+        error: detection.error || "Unknown error loading native render library",
+        suggestions: detection.suggestions || [
+          "Try rebuilding: bun run build",
+          "Check if your platform is supported", 
+          "Use the web UI instead: opencode web"
+        ],
+        onRetry: () => {
+          // Retry the TUI startup
+          tui(input).then(resolve).catch(() => resolve())
+        },
+        onExit: () => {
+          input.onExit?.().then(() => resolve()).catch(() => resolve())
+        }
+      })
+      return
+      if (detection.suggestions && detection.suggestions.length > 0) {
+        console.error("💡 Suggestions:")
+        detection.suggestions.forEach((suggestion, index) => {
+          console.error(`  ${index + 1}. ${suggestion}`)
+        })
+      }
+      console.error("")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
     const mode = await getTerminalBackgroundColor()
 
     const routeData: Route | undefined = input.sessionID
@@ -110,7 +216,31 @@ export function tui(input: {
       resolve()
     }
 
-    render(
+    // Dynamic import of render function after detection passes
+    let renderModule: typeof import("@opentui/solid") | null = null
+    try {
+      renderModule = await import("@opentui/solid")
+    } catch (error) {
+      console.error(`\n❌ Failed to load TUI renderer: ${error instanceof Error ? error.message : String(error)}\n`)
+      console.error("💡 Suggestions:")
+      console.error("  1. Try rebuilding: bun run build")
+      console.error("  2. Use the web UI instead: opencode web")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
+    if (!renderModule) {
+      console.error("\n❌ TUI renderer module not available\n")
+      console.error("💡 Suggestions:")
+      console.error("  1. Try reinstalling dependencies: bun install")
+      console.error("  2. Use the web UI instead: opencode web")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
+    renderModule.render(
       () => {
         return (
           <ErrorBoundary
@@ -150,6 +280,15 @@ export function tui(input: {
           </ErrorBoundary>
         )
       },
+      {
+        targetFps: 60,
+        gatherStats: false,
+        exitOnCtrlC: false,
+        useKittyKeyboard: true,
+      },
+    )
+  })
+},
       {
         targetFps: 60,
         gatherStats: false,
