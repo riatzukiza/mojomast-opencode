@@ -4,6 +4,7 @@ import clipboardy from "clipboardy"
 import { lazy } from "../../../../util/lazy.js"
 import { tmpdir } from "os"
 import path from "path"
+import { Platform } from "../../../../util/platform"
 
 export namespace Clipboard {
   export interface Content {
@@ -12,6 +13,11 @@ export namespace Clipboard {
   }
 
   export async function read(): Promise<Content | undefined> {
+    // Git Bash has limited clipboard support - return undefined early
+    if (Platform.isGitBash()) {
+      return undefined
+    }
+
     const os = platform()
 
     if (os === "darwin") {
@@ -59,6 +65,15 @@ export namespace Clipboard {
   }
 
   const getCopyMethod = lazy(() => {
+    // Git Bash has limited clipboard support - disable clipboard operations
+    if (Platform.isGitBash()) {
+      console.log("clipboard: disabled for Git Bash (limited support)")
+      return async (text: string) => {
+        // No-op for Git Bash - could show a message to user
+        console.log("Clipboard operations are not supported in Git Bash")
+      }
+    }
+
     const os = platform()
 
     if (os === "darwin" && Bun.which("oascript")) {

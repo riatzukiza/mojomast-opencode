@@ -58,6 +58,8 @@ import { DialogMessage } from "./dialog-message"
 import type { PromptInfo } from "../../component/prompt/history"
 import { iife } from "@/util/iife"
 import { DialogConfirm } from "@tui/ui/dialog-confirm"
+import { Platform } from "@/util/platform"
+import { TerminalCapabilities } from "@/util/terminal-capabilities"
 import { DialogTimeline } from "./dialog-timeline"
 import { Sidebar } from "./sidebar"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
@@ -100,7 +102,9 @@ export function Session() {
 
   const wide = createMemo(() => dimensions().width > 120)
   const sidebarVisible = createMemo(() => sidebar() === "show" || (sidebar() === "auto" && wide()))
-  const contentWidth = createMemo(() => dimensions().width - (sidebarVisible() ? 42 : 0) - 4)
+  const contentWidth = createMemo(() =>
+    Math.max(40, dimensions().width - (sidebarVisible() ? 42 : 0) - 4),
+  )
 
   createEffect(() => sync.session.sync(route.sessionID))
 
@@ -854,16 +858,49 @@ function ReasoningPart(props: { part: ReasoningPart; message: AssistantMessage }
 function TextPart(props: { part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { syntax } = useTheme()
+  const capabilities = TerminalCapabilities.detect()
+  const shouldUseSimplified = TerminalCapabilities.shouldUseSimplifiedRendering()
+
+  // Normalize content for Git Bash
+  const normalizedContent = createMemo(() => {
+    let content = props.part.text.trim()
+
+    if (Platform.isGitBash()) {
+      // Convert Windows paths to Unix-style for consistency in Git Bash
+      content = Platform.normalizePath(content)
+
+      // Remove or replace complex Unicode characters that may not render well
+      if (!capabilities.supportsUnicode) {
+        content = content
+          .replace(/[""''""''`]/g, '"')
+          .replace(/[–—]/g, "-")
+          .replace(/[…]/g, "...")
+      }
+    }
+
+    return content
+  })
+
   return (
-    <Show when={props.part.text.trim()}>
+    <Show when={normalizedContent()}>
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <code
-          filetype="markdown"
-          drawUnstyledText={false}
-          syntaxStyle={syntax()}
-          content={props.part.text.trim()}
-          conceal={ctx.conceal()}
-        />
+        <Show
+          when={shouldUseSimplified}
+          fallback={
+            <code
+              filetype="markdown"
+              drawUnstyledText={false}
+              syntaxStyle={syntax()}
+              content={normalizedContent()}
+              conceal={ctx.conceal()}
+            />
+          }
+        >
+          {/* Simplified rendering for Git Bash or limited terminals */}
+          <text fg={capabilities.supportsAnsiColors ? "white" : "default"}>
+            {normalizedContent()}
+          </text>
+        </Show>
       </box>
     </Show>
   )

@@ -199,6 +199,36 @@ describe("Keybind.parse", () => {
     ])
   })
 
+  test("should normalize option modifier to alt", () => {
+    const result = Keybind.parse("option+h")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "h",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+h")
+  })
+
+  test("should normalize meta modifier to alt in output", () => {
+    const result = Keybind.parse("meta+x")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "x",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+x")
+  })
+
   test("should parse leader with modifier", () => {
     const result = Keybind.parse("<leader>h")
     expect(result).toEqual([
@@ -302,6 +332,51 @@ describe("Keybind.parse", () => {
     ])
   })
 
+  test("should normalize option modifier to alt", () => {
+    const result = Keybind.parse("option+h")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "h",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+h")
+  })
+
+  test("should normalize meta modifier to alt in output", () => {
+    const result = Keybind.parse("meta+x")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "x",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+x")
+  })
+
+  test("should normalize modifier variants consistently", () => {
+    const altResult = Keybind.parse("alt+z")[0]
+    const metaResult = Keybind.parse("meta+z")[0]
+    const optionResult = Keybind.parse("option+z")[0]
+
+    // All should parse to the same internal representation
+    expect(altResult).toEqual(metaResult)
+    expect(altResult).toEqual(optionResult)
+
+    // All should output the same string representation
+    expect(Keybind.toString(altResult)).toBe("alt+z")
+    expect(Keybind.toString(metaResult)).toBe("alt+z")
+    expect(Keybind.toString(optionResult)).toBe("alt+z")
+  })
+
   test("should be case insensitive", () => {
     const result = Keybind.parse("CTRL+X")
     expect(result).toEqual([
@@ -313,5 +388,65 @@ describe("Keybind.parse", () => {
         name: "x",
       },
     ])
+  })
+
+  test("should normalize option modifier to alt", () => {
+    const result = Keybind.parse("option+h")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "h",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+h")
+  })
+
+  test("should normalize meta modifier to alt in output", () => {
+    const result = Keybind.parse("meta+x")
+    expect(result).toEqual([
+      {
+        ctrl: false,
+        meta: true,
+        shift: false,
+        leader: false,
+        name: "x",
+      },
+    ])
+    // Verify output is normalized to "alt"
+    expect(Keybind.toString(result[0])).toBe("alt+x")
+  })
+
+  test("should normalize modifier variants consistently", () => {
+    const altResult = Keybind.parse("alt+z")[0]
+    const metaResult = Keybind.parse("meta+z")[0]
+    const optionResult = Keybind.parse("option+z")[0]
+
+    // All should parse to the same internal representation
+    expect(altResult).toEqual(metaResult)
+    expect(altResult).toEqual(optionResult)
+
+    // All should output the same string representation
+    expect(Keybind.toString(altResult)).toBe("alt+z")
+    expect(Keybind.toString(metaResult)).toBe("alt+z")
+    expect(Keybind.toString(optionResult)).toBe("alt+z")
+  })
+
+  test("should normalize modifier variants consistently", () => {
+    const altResult = Keybind.parse("alt+z")[0]
+    const metaResult = Keybind.parse("meta+z")[0]
+    const optionResult = Keybind.parse("option+z")[0]
+
+    // All should parse to the same internal representation
+    expect(altResult).toEqual(metaResult)
+    expect(altResult).toEqual(optionResult)
+
+    // All should output the same string representation
+    expect(Keybind.toString(altResult)).toBe("alt+z")
+    expect(Keybind.toString(metaResult)).toBe("alt+z")
+    expect(Keybind.toString(optionResult)).toBe("alt+z")
   })
 })
