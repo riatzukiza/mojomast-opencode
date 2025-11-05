@@ -444,6 +444,15 @@ function ErrorComponent(props: { error: Error; reset: () => void; onExit: () => 
   })
   const [copied, setCopied] = createSignal(false)
 
+  const isNativeLibraryError = props.error.message && (
+    props.error.message.includes("Cannot find module") ||
+    props.error.message.includes("DYLD") ||
+    props.error.message.includes("DLL") ||
+    props.error.message.includes("@opentui") ||
+    props.error.message.includes("native") ||
+    props.error.message.includes("module not found")
+  )
+
   const issueURL = new URL("https://github.com/sst/opencode/issues/new?template=bug-report.yml")
 
   if (props.error.message) {
@@ -466,12 +475,26 @@ function ErrorComponent(props: { error: Error; reset: () => void; onExit: () => 
   return (
     <box flexDirection="column" gap={1}>
       <box flexDirection="row" gap={1} alignItems="center">
-        <text attributes={TextAttributes.BOLD}>Please report an issue.</text>
+        <text attributes={TextAttributes.BOLD}>
+          {isNativeLibraryError ? "Native Library Error" : "Please report an issue"}.
+        </text>
         <box onMouseUp={copyIssueURL} backgroundColor="#565f89" padding={1}>
           <text attributes={TextAttributes.BOLD}>Copy issue URL (exception info pre-filled)</text>
         </box>
         {copied() && <text>Successfully copied</text>}
       </box>
+      
+      {isNativeLibraryError && (
+        <box flexDirection="column" gap={1}>
+          <text>This appears to be a native library loading error.</text>
+          <text>💡 Suggestions:</text>
+          <text>  1. Try installing dependencies: bun install</text>
+          <text>  2. Try rebuilding: bun run build</text>
+          <text>  3. Check if your platform is supported</text>
+          <text>  4. Use the web UI instead: opencode web</text>
+        </box>
+      )}
+      
       <box flexDirection="row" gap={2} alignItems="center">
         <text>A fatal error occurred!</text>
         <box onMouseUp={props.reset} backgroundColor="#565f89" padding={1}>

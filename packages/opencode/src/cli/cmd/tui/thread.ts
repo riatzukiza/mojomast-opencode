@@ -82,15 +82,45 @@ export const TuiThreadCommand = cmd({
         return undefined
       })()
 
+      // Add global error handlers for native library failures
+      process.on("uncaughtException", (e) => {
+        if (e instanceof Error && (
+          e.message.includes("Cannot find module") ||
+          e.message.includes("DYLD") ||
+          e.message.includes("DLL") ||
+          e.message.includes("@opentui")
+        )) {
+          console.error(`\n❌ Native Library Error: ${e.message}\n`)
+          console.error("💡 Suggestions:")
+          console.error("  1. Try installing dependencies: bun install")
+          console.error("  2. Try rebuilding: bun run build")
+          console.error("  3. Use the web UI instead: opencode web")
+          process.exit(1)
+        }
+        console.error(e)
+      })
+      
+      process.on("unhandledRejection", (e) => {
+        if (e instanceof Error && (
+          e.message.includes("Cannot find module") ||
+          e.message.includes("DYLD") ||
+          e.message.includes("DLL") ||
+          e.message.includes("@opentui")
+        )) {
+          console.error(`\n❌ Native Library Error: ${e.message}\n`)
+          console.error("💡 Suggestions:")
+          console.error("  1. Try installing dependencies: bun install")
+          console.error("  2. Try rebuilding: bun run build")
+          console.error("  3. Use the web UI instead: opencode web")
+          process.exit(1)
+        }
+        console.error(e)
+      })
+
       const worker = new Worker("./src/cli/cmd/tui/worker.ts")
       worker.onerror = console.error
       const client = Rpc.client<typeof rpc>(worker)
-      process.on("uncaughtException", (e) => {
-        console.error(e)
-      })
-      process.on("unhandledRejection", (e) => {
-        console.error(e)
-      })
+      
       const server = await client.call("server", {
         port: args.port,
         hostname: args.hostname,
@@ -106,5 +136,5 @@ export const TuiThreadCommand = cmd({
         },
       })
     })
-  },
+  },,
 })
