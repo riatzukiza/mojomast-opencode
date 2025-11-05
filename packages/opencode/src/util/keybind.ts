@@ -9,6 +9,17 @@ export namespace Keybind {
     name: string
   }
 
+  export type ChordState = "idle" | "leader_active" | "chord_building" | "timeout" | "matched"
+
+  export type ChordSequence = Info[]
+
+  export interface StateMachine {
+    state: ChordState
+    sequence: ChordSequence
+    timeout: NodeJS.Timeout | null
+    startTime: number | null
+  }
+
   export function match(a: Info, b: Info): boolean {
     return isDeepEqual(a, b)
   }
@@ -72,5 +83,35 @@ export namespace Keybind {
 
       return info
     })
+  }
+
+  export function parseChord(key: string): Info[][] {
+    if (key === "none") return []
+
+    return key.split(",").map((chord) => {
+      // Handle chords like "<leader>gg" or "<leader>wq"
+      const chordParts = chord.split(/\s+/).filter(Boolean)
+      return chordParts.map((part) => parse(part)[0]!)
+    })
+  }
+
+  export function matchChord(sequence: ChordSequence, patterns: Info[][]): boolean {
+    return patterns.some((pattern) => {
+      if (pattern.length !== sequence.length) return false
+      return pattern.every((key, index) => match(key, sequence[index]))
+    })
+  }
+
+  export function sequenceToString(sequence: ChordSequence): string {
+    return sequence.map((key) => toString(key)).join(" ")
+  }
+
+  export function createStateMachine(): StateMachine {
+    return {
+      state: "idle",
+      sequence: [],
+      timeout: null,
+      startTime: null,
+    }
   }
 }

@@ -20,10 +20,30 @@ const SIGKILL_TIMEOUT_MS = 200
 export const log = Log.create({ service: "bash-tool" })
 
 const parser = lazy(async () => {
-  const { Parser } = await import("web-tree-sitter")
-  const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
-    with: { type: "wasm" },
-  })
+  try {
+    const { Parser } = await import("web-tree-sitter")
+    const { default: treeWasm } = await import("web-tree-sitter/tree-sitter.wasm" as string, {
+      with: { type: "wasm" },
+    })
+    await Parser.init({
+      locateFile() {
+        return treeWasm
+      },
+    })
+    const { default: bashWasm } = await import("tree-sitter-bash/tree-sitter-bash.wasm" as string, {
+      with: { type: "wasm" },
+    })
+    const bashLanguage = await Language.load(bashWasm)
+    const p = new Parser()
+    p.setLanguage(bashLanguage)
+    return p
+  } catch (error) {
+    log.warn("Failed to load tree-sitter parser, command parsing will be limited", { 
+      error: error instanceof Error ? error.message : String(error) 
+    })
+    return null
+  }
+})
   await Parser.init({
     locateFile() {
       return treeWasm
@@ -56,10 +76,14 @@ export const BashTool = Tool.define("bash", {
       )
     }
     const timeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT, MAX_TIMEOUT)
-    const tree = await parser().then((p) => p.parse(params.command))
-    if (!tree) {
-      throw new Error("Failed to parse command")
-    }
+    const parserInstance = await parser()
+    if (!parserInstance) {
+      log.warn("Command parsing skipped due to unavailable parser")
+    } else {
+      const tree = parserInstance.parse(params.command)
+      if (!tree) {
+        throw new Error("Failed to parse command")
+      }
     const permissions = await Agent.get(ctx.agent).then((x) => x.permission.bash)
 
     const askPatterns = new Set<string>()
