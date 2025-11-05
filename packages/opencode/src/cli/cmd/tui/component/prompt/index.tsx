@@ -67,8 +67,6 @@ export function Prompt(props: PromptProps) {
     const submitBindings = keybind.all.input_submit || []
 
     return [
-      { name: "return", action: "submit" },
-      { name: "return", meta: true, action: "newline" },
       ...newlineBindings.map((binding) => ({
         name: binding.name,
         ctrl: binding.ctrl || undefined,

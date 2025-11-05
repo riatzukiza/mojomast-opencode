@@ -13,6 +13,10 @@ export namespace Keybind {
     return isDeepEqual(a, b)
   }
 
+  /**
+   * Convert Info object to normalized string representation.
+   * Always outputs "alt" for meta modifier (not "meta" or "option").
+   */
   export function toString(info: Info): string {
     const parts: string[] = []
 
@@ -33,6 +37,11 @@ export namespace Keybind {
     return result
   }
 
+  /**
+   * Parse keybind string into Info objects.
+   * Normalizes modifier variants: "alt", "meta", "option" all map to meta=true.
+   * Output always uses "alt" for consistency (see toString()).
+   */
   export function parse(key: string): Info[] {
     if (key === "none") return []
 

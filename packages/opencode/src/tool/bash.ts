@@ -56,14 +56,19 @@ export const BashTool = Tool.define("bash", {
       )
     }
     const timeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT, MAX_TIMEOUT)
-    const tree = await parser().then((p) => p.parse(params.command))
-    if (!tree) {
-      throw new Error("Failed to parse command")
+    const parserInstance = await parser()
+    let tree = null
+    if (parserInstance) {
+      tree = parserInstance.parse(params.command)
+      if (!tree) {
+        throw new Error("Failed to parse command")
+      }
     }
     const permissions = await Agent.get(ctx.agent).then((x) => x.permission.bash)
 
     const askPatterns = new Set<string>()
-    for (const node of tree.rootNode.descendantsOfType("command")) {
+    if (tree) {
+      for (const node of tree.rootNode.descendantsOfType("command")) {
       if (!node) continue
       const command = []
       for (let i = 0; i < node.childCount; i++) {
