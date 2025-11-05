@@ -3,6 +3,8 @@ import * as prompts from "@clack/prompts"
 import { UI } from "../ui"
 import { Global } from "../../global"
 import { Agent } from "../../agent/agent"
+import { ToolRegistry } from "../../tool/registry"
+import { Config } from "../../config/config"
 import path from "path"
 import matter from "gray-matter"
 import { Instance } from "../../project/instance"
@@ -55,7 +57,7 @@ const AgentCreateCommand = cmd({
         })
         spinner.stop(`Agent ${generated.identifier} generated`)
 
-        const availableTools = [
+        const allTools = [
           "bash",
           "read",
           "write",
@@ -68,6 +70,27 @@ const AgentCreateCommand = cmd({
           "todowrite",
           "todoread",
         ]
+
+        const cfg = await Config.get()
+        const defaultTools = cfg.tools ?? {}
+        const mockAgent = await Agent.Info.parseAsync({
+          name: "temp",
+          model: "temp",
+          prompt: "temp",
+          tools: defaultTools,
+          permission: {
+            edit: "allow",
+            bash: { "*": "allow" },
+            webfetch: "allow",
+          },
+        })
+
+        const enabledTools = await ToolRegistry.enabled("", "", mockAgent)
+        const availableTools = allTools.filter((tool) => {
+          const globallyDisabled = defaultTools[tool] === false
+          const agentDisabled = enabledTools[tool] === false
+          return !globallyDisabled && !agentDisabled
+        })
 
         const selectedTools = await prompts.multiselect({
           message: "Select tools to enable",
