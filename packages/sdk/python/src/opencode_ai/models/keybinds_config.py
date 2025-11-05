@@ -14,111 +14,90 @@ class KeybindsConfig:
 
     Attributes:
         leader (Union[Unset, str]): Leader key for keybind combinations Default: 'ctrl+x'.
-        app_help (Union[Unset, str]): Show help dialog Default: '<leader>h'.
-        app_exit (Union[Unset, str]): Exit the application Default: 'ctrl+c,<leader>q'.
+        app_exit (Union[Unset, str]): Exit the application Default: 'ctrl+c,ctrl+d,<leader>q'.
         editor_open (Union[Unset, str]): Open external editor Default: '<leader>e'.
         theme_list (Union[Unset, str]): List available themes Default: '<leader>t'.
-        project_init (Union[Unset, str]): Create/update AGENTS.md Default: '<leader>i'.
-        tool_details (Union[Unset, str]): Toggle tool details Default: '<leader>d'.
-        thinking_blocks (Union[Unset, str]): Toggle thinking blocks Default: '<leader>b'.
+        sidebar_toggle (Union[Unset, str]): Toggle sidebar Default: '<leader>b'.
+        status_view (Union[Unset, str]): View status Default: '<leader>s'.
         session_export (Union[Unset, str]): Export session to editor Default: '<leader>x'.
         session_new (Union[Unset, str]): Create a new session Default: '<leader>n'.
         session_list (Union[Unset, str]): List all sessions Default: '<leader>l'.
         session_timeline (Union[Unset, str]): Show session timeline Default: '<leader>g'.
-        session_share (Union[Unset, str]): Share current session Default: '<leader>s'.
+        session_share (Union[Unset, str]): Share current session Default: 'none'.
         session_unshare (Union[Unset, str]): Unshare current session Default: 'none'.
-        session_interrupt (Union[Unset, str]): Interrupt current session Default: 'esc'.
-        session_compact (Union[Unset, str]): Compact the session Default: '<leader>c'.
-        session_child_cycle (Union[Unset, str]): Cycle to next child session Default: 'ctrl+right'.
-        session_child_cycle_reverse (Union[Unset, str]): Cycle to previous child session Default: 'ctrl+left'.
-        messages_page_up (Union[Unset, str]): Scroll messages up by one page Default: 'pgup'.
-        messages_page_down (Union[Unset, str]): Scroll messages down by one page Default: 'pgdown'.
+        session_interrupt (Union[Unset, str]): Interrupt current session Default: 'escape'.
+        session_compact (Union[Unset, str]): Compact session Default: '<leader>c'.
+        messages_page_up (Union[Unset, str]): Scroll messages up by one page Default: 'pageup'.
+        messages_page_down (Union[Unset, str]): Scroll messages down by one page Default: 'pagedown'.
         messages_half_page_up (Union[Unset, str]): Scroll messages up by half page Default: 'ctrl+alt+u'.
         messages_half_page_down (Union[Unset, str]): Scroll messages down by half page Default: 'ctrl+alt+d'.
-        messages_first (Union[Unset, str]): Navigate to first message Default: 'ctrl+g'.
-        messages_last (Union[Unset, str]): Navigate to last message Default: 'ctrl+alt+g'.
+        messages_first (Union[Unset, str]): Navigate to first message Default: 'ctrl+g,home'.
+        messages_last (Union[Unset, str]): Navigate to last message Default: 'ctrl+alt+g,end'.
         messages_copy (Union[Unset, str]): Copy message Default: '<leader>y'.
         messages_undo (Union[Unset, str]): Undo message Default: '<leader>u'.
         messages_redo (Union[Unset, str]): Redo message Default: '<leader>r'.
+        messages_toggle_conceal (Union[Unset, str]): Toggle code block concealment in messages Default: '<leader>h'.
         model_list (Union[Unset, str]): List available models Default: '<leader>m'.
-        model_cycle_recent (Union[Unset, str]): Next recent model Default: 'f2'.
-        model_cycle_recent_reverse (Union[Unset, str]): Previous recent model Default: 'shift+f2'.
+        model_cycle_recent (Union[Unset, str]): Next recently used model Default: 'f2'.
+        model_cycle_recent_reverse (Union[Unset, str]): Previous recently used model Default: 'shift+f2'.
+        command_list (Union[Unset, str]): List available commands Default: 'ctrl+p'.
         agent_list (Union[Unset, str]): List agents Default: '<leader>a'.
         agent_cycle (Union[Unset, str]): Next agent Default: 'tab'.
         agent_cycle_reverse (Union[Unset, str]): Previous agent Default: 'shift+tab'.
         input_clear (Union[Unset, str]): Clear input field Default: 'ctrl+c'.
+        input_forward_delete (Union[Unset, str]): Forward delete Default: 'ctrl+d'.
         input_paste (Union[Unset, str]): Paste from clipboard Default: 'ctrl+v'.
-        input_submit (Union[Unset, str]): Submit input Default: 'enter'.
-        input_newline (Union[Unset, str]): Insert newline in input Default: 'shift+enter,ctrl+j'.
-        switch_mode (Union[Unset, str]): @deprecated use agent_cycle. Next mode Default: 'none'.
-        switch_mode_reverse (Union[Unset, str]): @deprecated use agent_cycle_reverse. Previous mode Default: 'none'.
-        switch_agent (Union[Unset, str]): @deprecated use agent_cycle. Next agent Default: 'tab'.
-        switch_agent_reverse (Union[Unset, str]): @deprecated use agent_cycle_reverse. Previous agent Default:
-            'shift+tab'.
-        file_list (Union[Unset, str]): @deprecated Currently not available. List files Default: 'none'.
-        file_close (Union[Unset, str]): @deprecated Close file Default: 'none'.
-        file_search (Union[Unset, str]): @deprecated Search file Default: 'none'.
-        file_diff_toggle (Union[Unset, str]): @deprecated Split/unified diff Default: 'none'.
-        messages_previous (Union[Unset, str]): @deprecated Navigate to previous message Default: 'none'.
-        messages_next (Union[Unset, str]): @deprecated Navigate to next message Default: 'none'.
-        messages_layout_toggle (Union[Unset, str]): @deprecated Toggle layout Default: 'none'.
-        messages_revert (Union[Unset, str]): @deprecated use messages_undo. Revert message Default: 'none'.
+        input_submit (Union[Unset, str]): Submit input Default: 'return'.
+        input_newline (Union[Unset, str]): Insert newline in input Default: 'shift+return,ctrl+j'.
+        history_previous (Union[Unset, str]): Previous history item Default: 'up'.
+        history_next (Union[Unset, str]): Previous history item Default: 'down'.
+        session_child_cycle (Union[Unset, str]): Next child session Default: 'ctrl+right'.
+        session_child_cycle_reverse (Union[Unset, str]): Previous child session Default: 'ctrl+left'.
     """
 
     leader: Union[Unset, str] = "ctrl+x"
-    app_help: Union[Unset, str] = "<leader>h"
-    app_exit: Union[Unset, str] = "ctrl+c,<leader>q"
+    app_exit: Union[Unset, str] = "ctrl+c,ctrl+d,<leader>q"
     editor_open: Union[Unset, str] = "<leader>e"
     theme_list: Union[Unset, str] = "<leader>t"
-    project_init: Union[Unset, str] = "<leader>i"
-    tool_details: Union[Unset, str] = "<leader>d"
-    thinking_blocks: Union[Unset, str] = "<leader>b"
+    sidebar_toggle: Union[Unset, str] = "<leader>b"
+    status_view: Union[Unset, str] = "<leader>s"
     session_export: Union[Unset, str] = "<leader>x"
     session_new: Union[Unset, str] = "<leader>n"
     session_list: Union[Unset, str] = "<leader>l"
     session_timeline: Union[Unset, str] = "<leader>g"
-    session_share: Union[Unset, str] = "<leader>s"
+    session_share: Union[Unset, str] = "none"
     session_unshare: Union[Unset, str] = "none"
-    session_interrupt: Union[Unset, str] = "esc"
+    session_interrupt: Union[Unset, str] = "escape"
     session_compact: Union[Unset, str] = "<leader>c"
-    session_child_cycle: Union[Unset, str] = "ctrl+right"
-    session_child_cycle_reverse: Union[Unset, str] = "ctrl+left"
-    messages_page_up: Union[Unset, str] = "pgup"
-    messages_page_down: Union[Unset, str] = "pgdown"
+    messages_page_up: Union[Unset, str] = "pageup"
+    messages_page_down: Union[Unset, str] = "pagedown"
     messages_half_page_up: Union[Unset, str] = "ctrl+alt+u"
     messages_half_page_down: Union[Unset, str] = "ctrl+alt+d"
-    messages_first: Union[Unset, str] = "ctrl+g"
-    messages_last: Union[Unset, str] = "ctrl+alt+g"
+    messages_first: Union[Unset, str] = "ctrl+g,home"
+    messages_last: Union[Unset, str] = "ctrl+alt+g,end"
     messages_copy: Union[Unset, str] = "<leader>y"
     messages_undo: Union[Unset, str] = "<leader>u"
     messages_redo: Union[Unset, str] = "<leader>r"
+    messages_toggle_conceal: Union[Unset, str] = "<leader>h"
     model_list: Union[Unset, str] = "<leader>m"
     model_cycle_recent: Union[Unset, str] = "f2"
     model_cycle_recent_reverse: Union[Unset, str] = "shift+f2"
+    command_list: Union[Unset, str] = "ctrl+p"
     agent_list: Union[Unset, str] = "<leader>a"
     agent_cycle: Union[Unset, str] = "tab"
     agent_cycle_reverse: Union[Unset, str] = "shift+tab"
     input_clear: Union[Unset, str] = "ctrl+c"
+    input_forward_delete: Union[Unset, str] = "ctrl+d"
     input_paste: Union[Unset, str] = "ctrl+v"
-    input_submit: Union[Unset, str] = "enter"
-    input_newline: Union[Unset, str] = "shift+enter,ctrl+j"
-    switch_mode: Union[Unset, str] = "none"
-    switch_mode_reverse: Union[Unset, str] = "none"
-    switch_agent: Union[Unset, str] = "tab"
-    switch_agent_reverse: Union[Unset, str] = "shift+tab"
-    file_list: Union[Unset, str] = "none"
-    file_close: Union[Unset, str] = "none"
-    file_search: Union[Unset, str] = "none"
-    file_diff_toggle: Union[Unset, str] = "none"
-    messages_previous: Union[Unset, str] = "none"
-    messages_next: Union[Unset, str] = "none"
-    messages_layout_toggle: Union[Unset, str] = "none"
-    messages_revert: Union[Unset, str] = "none"
+    input_submit: Union[Unset, str] = "return"
+    input_newline: Union[Unset, str] = "shift+return,ctrl+j"
+    history_previous: Union[Unset, str] = "up"
+    history_next: Union[Unset, str] = "down"
+    session_child_cycle: Union[Unset, str] = "ctrl+right"
+    session_child_cycle_reverse: Union[Unset, str] = "ctrl+left"
 
     def to_dict(self) -> dict[str, Any]:
         leader = self.leader
-
-        app_help = self.app_help
 
         app_exit = self.app_exit
 
@@ -126,11 +105,9 @@ class KeybindsConfig:
 
         theme_list = self.theme_list
 
-        project_init = self.project_init
+        sidebar_toggle = self.sidebar_toggle
 
-        tool_details = self.tool_details
-
-        thinking_blocks = self.thinking_blocks
+        status_view = self.status_view
 
         session_export = self.session_export
 
@@ -147,10 +124,6 @@ class KeybindsConfig:
         session_interrupt = self.session_interrupt
 
         session_compact = self.session_compact
-
-        session_child_cycle = self.session_child_cycle
-
-        session_child_cycle_reverse = self.session_child_cycle_reverse
 
         messages_page_up = self.messages_page_up
 
@@ -170,11 +143,15 @@ class KeybindsConfig:
 
         messages_redo = self.messages_redo
 
+        messages_toggle_conceal = self.messages_toggle_conceal
+
         model_list = self.model_list
 
         model_cycle_recent = self.model_cycle_recent
 
         model_cycle_recent_reverse = self.model_cycle_recent_reverse
+
+        command_list = self.command_list
 
         agent_list = self.agent_list
 
@@ -184,55 +161,37 @@ class KeybindsConfig:
 
         input_clear = self.input_clear
 
+        input_forward_delete = self.input_forward_delete
+
         input_paste = self.input_paste
 
         input_submit = self.input_submit
 
         input_newline = self.input_newline
 
-        switch_mode = self.switch_mode
+        history_previous = self.history_previous
 
-        switch_mode_reverse = self.switch_mode_reverse
+        history_next = self.history_next
 
-        switch_agent = self.switch_agent
+        session_child_cycle = self.session_child_cycle
 
-        switch_agent_reverse = self.switch_agent_reverse
-
-        file_list = self.file_list
-
-        file_close = self.file_close
-
-        file_search = self.file_search
-
-        file_diff_toggle = self.file_diff_toggle
-
-        messages_previous = self.messages_previous
-
-        messages_next = self.messages_next
-
-        messages_layout_toggle = self.messages_layout_toggle
-
-        messages_revert = self.messages_revert
+        session_child_cycle_reverse = self.session_child_cycle_reverse
 
         field_dict: dict[str, Any] = {}
 
         field_dict.update({})
         if leader is not UNSET:
             field_dict["leader"] = leader
-        if app_help is not UNSET:
-            field_dict["app_help"] = app_help
         if app_exit is not UNSET:
             field_dict["app_exit"] = app_exit
         if editor_open is not UNSET:
             field_dict["editor_open"] = editor_open
         if theme_list is not UNSET:
             field_dict["theme_list"] = theme_list
-        if project_init is not UNSET:
-            field_dict["project_init"] = project_init
-        if tool_details is not UNSET:
-            field_dict["tool_details"] = tool_details
-        if thinking_blocks is not UNSET:
-            field_dict["thinking_blocks"] = thinking_blocks
+        if sidebar_toggle is not UNSET:
+            field_dict["sidebar_toggle"] = sidebar_toggle
+        if status_view is not UNSET:
+            field_dict["status_view"] = status_view
         if session_export is not UNSET:
             field_dict["session_export"] = session_export
         if session_new is not UNSET:
@@ -249,10 +208,6 @@ class KeybindsConfig:
             field_dict["session_interrupt"] = session_interrupt
         if session_compact is not UNSET:
             field_dict["session_compact"] = session_compact
-        if session_child_cycle is not UNSET:
-            field_dict["session_child_cycle"] = session_child_cycle
-        if session_child_cycle_reverse is not UNSET:
-            field_dict["session_child_cycle_reverse"] = session_child_cycle_reverse
         if messages_page_up is not UNSET:
             field_dict["messages_page_up"] = messages_page_up
         if messages_page_down is not UNSET:
@@ -271,12 +226,16 @@ class KeybindsConfig:
             field_dict["messages_undo"] = messages_undo
         if messages_redo is not UNSET:
             field_dict["messages_redo"] = messages_redo
+        if messages_toggle_conceal is not UNSET:
+            field_dict["messages_toggle_conceal"] = messages_toggle_conceal
         if model_list is not UNSET:
             field_dict["model_list"] = model_list
         if model_cycle_recent is not UNSET:
             field_dict["model_cycle_recent"] = model_cycle_recent
         if model_cycle_recent_reverse is not UNSET:
             field_dict["model_cycle_recent_reverse"] = model_cycle_recent_reverse
+        if command_list is not UNSET:
+            field_dict["command_list"] = command_list
         if agent_list is not UNSET:
             field_dict["agent_list"] = agent_list
         if agent_cycle is not UNSET:
@@ -285,36 +244,22 @@ class KeybindsConfig:
             field_dict["agent_cycle_reverse"] = agent_cycle_reverse
         if input_clear is not UNSET:
             field_dict["input_clear"] = input_clear
+        if input_forward_delete is not UNSET:
+            field_dict["input_forward_delete"] = input_forward_delete
         if input_paste is not UNSET:
             field_dict["input_paste"] = input_paste
         if input_submit is not UNSET:
             field_dict["input_submit"] = input_submit
         if input_newline is not UNSET:
             field_dict["input_newline"] = input_newline
-        if switch_mode is not UNSET:
-            field_dict["switch_mode"] = switch_mode
-        if switch_mode_reverse is not UNSET:
-            field_dict["switch_mode_reverse"] = switch_mode_reverse
-        if switch_agent is not UNSET:
-            field_dict["switch_agent"] = switch_agent
-        if switch_agent_reverse is not UNSET:
-            field_dict["switch_agent_reverse"] = switch_agent_reverse
-        if file_list is not UNSET:
-            field_dict["file_list"] = file_list
-        if file_close is not UNSET:
-            field_dict["file_close"] = file_close
-        if file_search is not UNSET:
-            field_dict["file_search"] = file_search
-        if file_diff_toggle is not UNSET:
-            field_dict["file_diff_toggle"] = file_diff_toggle
-        if messages_previous is not UNSET:
-            field_dict["messages_previous"] = messages_previous
-        if messages_next is not UNSET:
-            field_dict["messages_next"] = messages_next
-        if messages_layout_toggle is not UNSET:
-            field_dict["messages_layout_toggle"] = messages_layout_toggle
-        if messages_revert is not UNSET:
-            field_dict["messages_revert"] = messages_revert
+        if history_previous is not UNSET:
+            field_dict["history_previous"] = history_previous
+        if history_next is not UNSET:
+            field_dict["history_next"] = history_next
+        if session_child_cycle is not UNSET:
+            field_dict["session_child_cycle"] = session_child_cycle
+        if session_child_cycle_reverse is not UNSET:
+            field_dict["session_child_cycle_reverse"] = session_child_cycle_reverse
 
         return field_dict
 
@@ -323,19 +268,15 @@ class KeybindsConfig:
         d = dict(src_dict)
         leader = d.pop("leader", UNSET)
 
-        app_help = d.pop("app_help", UNSET)
-
         app_exit = d.pop("app_exit", UNSET)
 
         editor_open = d.pop("editor_open", UNSET)
 
         theme_list = d.pop("theme_list", UNSET)
 
-        project_init = d.pop("project_init", UNSET)
+        sidebar_toggle = d.pop("sidebar_toggle", UNSET)
 
-        tool_details = d.pop("tool_details", UNSET)
-
-        thinking_blocks = d.pop("thinking_blocks", UNSET)
+        status_view = d.pop("status_view", UNSET)
 
         session_export = d.pop("session_export", UNSET)
 
@@ -352,10 +293,6 @@ class KeybindsConfig:
         session_interrupt = d.pop("session_interrupt", UNSET)
 
         session_compact = d.pop("session_compact", UNSET)
-
-        session_child_cycle = d.pop("session_child_cycle", UNSET)
-
-        session_child_cycle_reverse = d.pop("session_child_cycle_reverse", UNSET)
 
         messages_page_up = d.pop("messages_page_up", UNSET)
 
@@ -375,11 +312,15 @@ class KeybindsConfig:
 
         messages_redo = d.pop("messages_redo", UNSET)
 
+        messages_toggle_conceal = d.pop("messages_toggle_conceal", UNSET)
+
         model_list = d.pop("model_list", UNSET)
 
         model_cycle_recent = d.pop("model_cycle_recent", UNSET)
 
         model_cycle_recent_reverse = d.pop("model_cycle_recent_reverse", UNSET)
+
+        command_list = d.pop("command_list", UNSET)
 
         agent_list = d.pop("agent_list", UNSET)
 
@@ -389,45 +330,29 @@ class KeybindsConfig:
 
         input_clear = d.pop("input_clear", UNSET)
 
+        input_forward_delete = d.pop("input_forward_delete", UNSET)
+
         input_paste = d.pop("input_paste", UNSET)
 
         input_submit = d.pop("input_submit", UNSET)
 
         input_newline = d.pop("input_newline", UNSET)
 
-        switch_mode = d.pop("switch_mode", UNSET)
+        history_previous = d.pop("history_previous", UNSET)
 
-        switch_mode_reverse = d.pop("switch_mode_reverse", UNSET)
+        history_next = d.pop("history_next", UNSET)
 
-        switch_agent = d.pop("switch_agent", UNSET)
+        session_child_cycle = d.pop("session_child_cycle", UNSET)
 
-        switch_agent_reverse = d.pop("switch_agent_reverse", UNSET)
-
-        file_list = d.pop("file_list", UNSET)
-
-        file_close = d.pop("file_close", UNSET)
-
-        file_search = d.pop("file_search", UNSET)
-
-        file_diff_toggle = d.pop("file_diff_toggle", UNSET)
-
-        messages_previous = d.pop("messages_previous", UNSET)
-
-        messages_next = d.pop("messages_next", UNSET)
-
-        messages_layout_toggle = d.pop("messages_layout_toggle", UNSET)
-
-        messages_revert = d.pop("messages_revert", UNSET)
+        session_child_cycle_reverse = d.pop("session_child_cycle_reverse", UNSET)
 
         keybinds_config = cls(
             leader=leader,
-            app_help=app_help,
             app_exit=app_exit,
             editor_open=editor_open,
             theme_list=theme_list,
-            project_init=project_init,
-            tool_details=tool_details,
-            thinking_blocks=thinking_blocks,
+            sidebar_toggle=sidebar_toggle,
+            status_view=status_view,
             session_export=session_export,
             session_new=session_new,
             session_list=session_list,
@@ -436,8 +361,6 @@ class KeybindsConfig:
             session_unshare=session_unshare,
             session_interrupt=session_interrupt,
             session_compact=session_compact,
-            session_child_cycle=session_child_cycle,
-            session_child_cycle_reverse=session_child_cycle_reverse,
             messages_page_up=messages_page_up,
             messages_page_down=messages_page_down,
             messages_half_page_up=messages_half_page_up,
@@ -447,28 +370,23 @@ class KeybindsConfig:
             messages_copy=messages_copy,
             messages_undo=messages_undo,
             messages_redo=messages_redo,
+            messages_toggle_conceal=messages_toggle_conceal,
             model_list=model_list,
             model_cycle_recent=model_cycle_recent,
             model_cycle_recent_reverse=model_cycle_recent_reverse,
+            command_list=command_list,
             agent_list=agent_list,
             agent_cycle=agent_cycle,
             agent_cycle_reverse=agent_cycle_reverse,
             input_clear=input_clear,
+            input_forward_delete=input_forward_delete,
             input_paste=input_paste,
             input_submit=input_submit,
             input_newline=input_newline,
-            switch_mode=switch_mode,
-            switch_mode_reverse=switch_mode_reverse,
-            switch_agent=switch_agent,
-            switch_agent_reverse=switch_agent_reverse,
-            file_list=file_list,
-            file_close=file_close,
-            file_search=file_search,
-            file_diff_toggle=file_diff_toggle,
-            messages_previous=messages_previous,
-            messages_next=messages_next,
-            messages_layout_toggle=messages_layout_toggle,
-            messages_revert=messages_revert,
+            history_previous=history_previous,
+            history_next=history_next,
+            session_child_cycle=session_child_cycle,
+            session_child_cycle_reverse=session_child_cycle_reverse,
         )
 
         return keybinds_config
