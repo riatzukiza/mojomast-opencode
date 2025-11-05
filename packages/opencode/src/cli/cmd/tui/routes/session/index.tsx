@@ -12,6 +12,8 @@ import {
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import path from "path"
+import { normalizePathForDisplay } from "../../../../../util/path"
+import { processAnsiForTerminal, sanitizeTextForTerminal } from "../../../../../util/ansi"
 import { useRoute, useRouteData } from "@tui/context/route"
 import { useSync } from "@tui/context/sync"
 import { SplitBorder } from "@tui/component/border"
@@ -1020,7 +1022,11 @@ ToolRegistry.register<typeof BashTool>({
   name: "bash",
   container: "block",
   render(props) {
-    const output = createMemo(() => Bun.stripANSI(props.metadata.output?.trim() ?? ""))
+    const output = createMemo(() => {
+      const rawOutput = props.metadata.output?.trim() ?? ""
+      const sanitized = sanitizeTextForTerminal(rawOutput)
+      return processAnsiForTerminal(sanitized)
+    })
     const { theme } = useTheme()
     return (
       <>
@@ -1342,10 +1348,15 @@ ToolRegistry.register<typeof TodoWriteTool>({
 
 function normalizePath(input?: string) {
   if (!input) return ""
-  if (path.isAbsolute(input)) {
-    return path.relative(process.cwd(), input) || "."
+  
+  // Use Git Bash-aware path normalization
+  const normalized = normalizePathForDisplay(input)
+  const normalized = normalizePathForDisplay(input)
+  
+  if (path.isAbsolute(normalized)) {
+    return path.relative(process.cwd(), normalized) || "."
   }
-  return input
+  return normalized
 }
 
 function input(input: Record<string, any>, omit?: string[]): string {

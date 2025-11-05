@@ -39,11 +39,91 @@ export function List<T>(props: ListProps<T>) {
   const handleKey = (e: KeyboardEvent) => {
     setStore("mouseActive", false)
 
+    // Emacs-style navigation
+    if (e.ctrlKey && !e.altKey && !e.shiftKey) {
+      switch (e.key) {
+        case 'n':
+          e.preventDefault()
+          list.next()
+          return
+        case 'p':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'f':
+          e.preventDefault()
+          list.next()
+          return
+        case 'b':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'a':
+          e.preventDefault()
+          // Move to first item
+          if (props.data.length > 0) {
+            list.setActive(props.key(props.data[0]))
+          }
+          return
+        case 'e':
+          e.preventDefault()
+          // Move to last item
+          if (props.data.length > 0) {
+            list.setActive(props.key(props.data[props.data.length - 1]))
+          }
+          return
+      }
+    }
+    
+    // Vi-style navigation
+    if (!e.ctrlKey && !e.altKey && !e.shiftKey) {
+      switch (e.key) {
+        case 'j':
+          e.preventDefault()
+          list.next()
+          return
+        case 'k':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'h':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'l':
+          e.preventDefault()
+          list.next()
+          return
+        case 'g':
+          e.preventDefault()
+          // gg - go to first item (detect double g)
+          setTimeout(() => {
+            const active = document.activeElement
+            if (active && (active as HTMLElement).textContent === 'g') {
+              if (props.data.length > 0) {
+                list.setActive(props.key(props.data[0]))
+              }
+            }
+          }, 10)
+          return
+        case 'G':
+          e.preventDefault()
+          // G - go to last item
+          if (props.data.length > 0) {
+            list.setActive(props.key(props.data[props.data.length - 1]))
+          }
+          return
+      }
+    }
+
     if (e.key === "Enter") {
       e.preventDefault()
       const selected = props.data.find((x) => props.key(x) === list.active())
       if (selected) handleSelect(selected)
     } else {
+      list.onKeyDown(e)
+    }
+  } else {
       list.onKeyDown(e)
     }
   }

@@ -17,7 +17,7 @@ export namespace Keybind {
     const parts: string[] = []
 
     if (info.ctrl) parts.push("ctrl")
-    if (info.meta) parts.push("alt")
+    if (info.meta) parts.push("meta")
     if (info.shift) parts.push("shift")
     if (info.name) {
       if (info.name === "delete") parts.push("del")

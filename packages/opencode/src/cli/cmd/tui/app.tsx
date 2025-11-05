@@ -1,6 +1,8 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Clipboard } from "@tui/util/clipboard"
 import { TextAttributes } from "@opentui/core"
+import { detectNativeRenderLibrary } from "./native-detector"
+import { showFallbackUI, showSimpleError } from "./fallback-ui"
 import { RouteProvider, useRoute, type Route } from "@tui/context/route"
 import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal } from "solid-js"
 import { Installation } from "@/installation"

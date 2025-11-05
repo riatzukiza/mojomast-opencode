@@ -19,12 +19,12 @@ describe("Keybind.toString", () => {
 
   test("should convert multiple modifiers to string", () => {
     const info: Keybind.Info = { ctrl: true, meta: true, shift: false, leader: false, name: "g" }
-    expect(Keybind.toString(info)).toBe("ctrl+alt+g")
+    expect(Keybind.toString(info)).toBe("ctrl+meta+g")
   })
 
   test("should convert all modifiers to string", () => {
     const info: Keybind.Info = { ctrl: true, meta: true, shift: true, leader: true, name: "h" }
-    expect(Keybind.toString(info)).toBe("<leader> ctrl+alt+shift+h")
+    expect(Keybind.toString(info)).toBe("<leader> ctrl+meta+shift+h")
   })
 
   test("should convert shift modifier to string", () => {
@@ -61,7 +61,7 @@ describe("Keybind.toString", () => {
 
   test("should handle only modifiers", () => {
     const info: Keybind.Info = { ctrl: true, meta: true, shift: true, leader: true, name: "" }
-    expect(Keybind.toString(info)).toBe("<leader> ctrl+alt+shift")
+    expect(Keybind.toString(info)).toBe("<leader> ctrl+meta+shift")
   })
 
   test("should handle only leader with no other parts", () => {

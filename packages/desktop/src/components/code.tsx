@@ -1,7 +1,7 @@
 import { bundledLanguages, type BundledLanguage, type ShikiTransformer } from "shiki"
 import { splitProps, type ComponentProps, createEffect, onMount, onCleanup, createMemo, createResource } from "solid-js"
 import { useLocal, type TextSelection } from "@/context/local"
-import { getFileExtension, getNodeOffsetInLine, getSelectionInContainer } from "@/utils"
+import { getFileExtension, getNodeOffsetInLine, getSelectionInContainer, matchesShortcut } from "@/utils"
 import { useShiki } from "@opencode-ai/ui"
 
 type DefinedSelection = Exclude<TextSelection, undefined>
@@ -110,14 +110,14 @@ export function Code(props: Props) {
       ctx.file.select(local.path, { startLine: d.sl, startChar: d.sch, endLine: d.el, endChar: d.ech })
     }
 
-    const MOD = typeof navigator === "object" && /(Mac|iPod|iPhone|iPad)/.test(navigator.platform) ? "Meta" : "Control"
+    
     const onKeyDown = (e: KeyboardEvent) => {
       if (ctx.file.active()?.path !== local.path) return
       const ae = document.activeElement as HTMLElement | undefined
       const tag = (ae?.tagName || "").toLowerCase()
       const inputFocused = !!ae && (tag === "input" || tag === "textarea" || ae.isContentEditable)
       if (inputFocused) return
-      if (e.getModifierState(MOD) && e.key.toLowerCase() === "a") {
+      if (matchesShortcut(e, "mod+a")) {
         e.preventDefault()
         if (!container) return
         const element = container.querySelector("code") as HTMLElement | undefined

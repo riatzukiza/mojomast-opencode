@@ -292,6 +292,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
     if (event.key === "Enter" && !event.shiftKey) {
       handleSubmit(event)
+      event.preventDefault()
     }
   }
 

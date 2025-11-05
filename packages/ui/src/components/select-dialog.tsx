@@ -62,11 +62,110 @@ export function SelectDialog<T>(props: SelectDialogProps<T>) {
     setStore("mouseActive", false)
     if (e.key === "Escape") return
 
+    // Emacs-style navigation
+    if (e.ctrlKey && !e.altKey && !e.shiftKey) {
+      switch (e.key) {
+        case 'n':
+          e.preventDefault()
+          list.next()
+          return
+        case 'p':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'f':
+          e.preventDefault()
+          list.next()
+          return
+        case 'b':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'a':
+          e.preventDefault()
+          // Move to first item
+          const all = flat()
+          if (all.length > 0) {
+            list.setActive(others.key(all[0]))
+          }
+          return
+        case 'e':
+          e.preventDefault()
+          // Move to last item
+          const allItems = flat()
+          if (allItems.length > 0) {
+            list.setActive(others.key(allItems[allItems.length - 1]))
+          }
+          return
+        case 'v':
+          e.preventDefault()
+          // Page up
+          for (let i = 0; i < 10; i++) list.previous()
+          return
+      }
+    }
+    
+    // Vi-style navigation
+    if (!e.ctrlKey && !e.altKey && !e.shiftKey) {
+      switch (e.key) {
+        case 'j':
+          e.preventDefault()
+          list.next()
+          return
+        case 'k':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'h':
+          e.preventDefault()
+          list.previous()
+          return
+        case 'l':
+          e.preventDefault()
+          list.next()
+          return
+        case 'g':
+          e.preventDefault()
+          // gg - go to first item (detect double g)
+          setTimeout(() => {
+            const active = document.activeElement
+            if (active && (active as HTMLElement).textContent === 'g') {
+              const all = flat()
+              if (all.length > 0) {
+                list.setActive(others.key(all[0]))
+              }
+            }
+          }, 10)
+          return
+        case 'G':
+          e.preventDefault()
+          // G - go to last item
+          const items = flat()
+          if (items.length > 0) {
+            list.setActive(others.key(items[items.length - 1]))
+          }
+          return
+        case 'u':
+          e.preventDefault()
+          // Page up
+          for (let i = 0; i < 10; i++) list.previous()
+          return
+        case 'd':
+          e.preventDefault()
+          // Page down
+          for (let i = 0; i < 10; i++) list.next()
+          return
+      }
+    }
+
     if (e.key === "Enter") {
       e.preventDefault()
-      const selected = flat().find((x) => others.key(x) === active())
+      const selected = flat().find((x) => others.key(x) === list.active())
       if (selected) handleSelect(selected)
     } else {
+      onKeyDown(e)
+    }
+  } else {
       onKeyDown(e)
     }
   }

@@ -123,6 +123,82 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
 
   const keybind = useKeybind()
   useKeyboard((evt) => {
+    // Enhanced Emacs-style navigation
+    if (evt.ctrl && !evt.alt && !evt.shift) {
+      switch (evt.name) {
+        case 'n':
+          move(1)
+          return
+        case 'p':
+          move(-1)
+          return
+        case 'f':
+          move(1)
+          return
+        case 'b':
+          move(-1)
+          return
+        case 'a':
+          // Move to first item
+          moveTo(0)
+          return
+        case 'e':
+          // Move to last item
+          moveTo(flat().length - 1)
+          return
+        case 'v':
+          // Page up (Emacs style)
+          move(-10)
+          return
+      }
+    }
+    
+    // Enhanced Vi-style navigation
+    if (!evt.ctrl && !evt.alt && !evt.shift) {
+      switch (evt.name) {
+        case 'j':
+          move(1)
+          return
+        case 'k':
+          move(-1)
+          return
+        case 'h':
+          move(-1)
+          return
+        case 'l':
+          move(1)
+          return
+        case 'g':
+          // gg - go to first item (detect sequence)
+          setTimeout(() => {
+            // This is a simplified detection - in a real implementation,
+            // we'd want to track key sequence state
+            moveTo(0)
+          }, 10)
+          return
+        case 'G':
+          // G - go to last item
+          moveTo(flat().length - 1)
+          return
+        case 'u':
+          // Page up (Vi style)
+          move(-10)
+          return
+        case 'd':
+          // Page down (Vi style)
+          move(10)
+          return
+        case '0':
+          // Move to first item (Vi style)
+          moveTo(0)
+          return
+        case '$':
+          // Move to last item (Vi style)
+          moveTo(flat().length - 1)
+          return
+      }
+    }
+
     if (evt.name === "up" || (evt.ctrl && evt.name === "p")) move(-1)
     if (evt.name === "down" || (evt.ctrl && evt.name === "n")) move(1)
     if (evt.name === "pageup") move(-10)

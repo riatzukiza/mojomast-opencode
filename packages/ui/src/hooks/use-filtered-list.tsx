@@ -65,11 +65,90 @@ export function useFilteredList<T>(props: FilteredListProps<T>) {
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
+    // Emacs-style navigation
+    if (event.ctrlKey && !event.altKey && !event.shiftKey) {
+      switch (event.key) {
+        case 'n':
+          event.preventDefault()
+          list.next()
+          return
+        case 'p':
+          event.preventDefault()
+          list.previous()
+          return
+        case 'f':
+          event.preventDefault()
+          list.next()
+          return
+        case 'b':
+          event.preventDefault()
+          list.previous()
+          return
+        case 'a':
+          event.preventDefault()
+          // Move to beginning of list (first item)
+          list.setActive(props.key(flat()[0]))
+          return
+        case 'e':
+          event.preventDefault()
+          // Move to end of list (last item)
+          list.setActive(props.key(flat()[flat().length - 1]))
+          return
+        case 'k':
+          event.preventDefault()
+          // Delete current item (if supported)
+          return
+        case 'y':
+          event.preventDefault()
+          // Yank/copy current item (if supported)
+          return
+      }
+    }
+    
+    // Vi-style navigation
+    if (!event.ctrlKey && !event.altKey && !event.shiftKey) {
+      switch (event.key) {
+        case 'j':
+          event.preventDefault()
+          list.next()
+          return
+        case 'k':
+          event.preventDefault()
+          list.previous()
+          return
+        case 'h':
+          event.preventDefault()
+          list.previous()
+          return
+        case 'l':
+          event.preventDefault()
+          list.next()
+          return
+        case 'g':
+          event.preventDefault()
+          // gg - go to first item
+          setTimeout(() => {
+            if (event.key === 'g' && document.activeElement?.textContent === 'g') {
+              list.setActive(props.key(flat()[0]))
+            }
+          }, 10)
+          return
+        case 'G':
+          event.preventDefault()
+          // G - go to last item
+          list.setActive(props.key(flat()[flat().length - 1]))
+          return
+      }
+    }
+
     if (event.key === "Enter") {
       event.preventDefault()
       const selected = flat().find((x) => props.key(x) === list.active())
       if (selected) props.onSelect?.(selected)
     } else {
+      list.onKeyDown(event)
+    }
+  } else {
       list.onKeyDown(event)
     }
   }
