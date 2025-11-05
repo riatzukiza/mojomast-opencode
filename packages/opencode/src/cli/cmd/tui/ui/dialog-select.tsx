@@ -84,7 +84,10 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
 
   const dimensions = useTerminalDimensions()
   const height = createMemo(() =>
-    Math.min(flat().length + grouped().length * 2 - 1, Math.floor(dimensions().height / 2) - 6),
+    Math.min(
+      flat().length + grouped().length * 2 - 1,
+      Math.max(10, Math.floor(dimensions().height / 2) - 6)
+    ),
   )
 
   const selected = createMemo(() => flat()[store.selected])

@@ -1,21 +1,5 @@
-import {
-  Button,
-  List,
-  SelectDialog,
-  Tooltip,
-  IconButton,
-  Tabs,
-  Icon,
-  Accordion,
-  Diff,
-  Collapsible,
-  DiffChanges,
-  ProgressCircle,
-  Message,
-  Typewriter,
-} from "@opencode-ai/ui"
-import { FileIcon } from "@/ui"
-import FileTree from "@/components/file-tree"
+import { FileTree } from "@/components/file-tree"
+import { getModifierState, matchesShortcut } from "@/utils/modifiers"
 import { MessageProgress } from "@/components/message-progress"
 import { For, onCleanup, onMount, Show, Match, Switch, createSignal, createEffect, createMemo } from "solid-js"
 import { useLocal, type LocalFile } from "@/context/local"
@@ -61,7 +45,7 @@ export default function Page() {
     }
   })
 
-  const MOD = typeof navigator === "object" && /(Mac|iPod|iPhone|iPad)/.test(navigator.platform) ? "Meta" : "Control"
+  
 
   onMount(() => {
     document.addEventListener("keydown", handleKeyDown)
@@ -72,11 +56,11 @@ export default function Page() {
   })
 
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.getModifierState(MOD) && event.shiftKey && event.key.toLowerCase() === "p") {
+    if (matchesShortcut(event, "mod+shift+p")) {
       event.preventDefault()
       return
     }
-    if (event.getModifierState(MOD) && event.key.toLowerCase() === "p") {
+    if (matchesShortcut(event, "mod+p")) {
       event.preventDefault()
       setStore("fileSelectOpen", true)
       return
@@ -101,7 +85,7 @@ export default function Page() {
         return
       }
 
-      if (event.getModifierState(MOD)) {
+      if (getModifierState(event).mod) {
         if (event.key.toLowerCase() === "a") {
           return
         }
@@ -111,7 +95,7 @@ export default function Page() {
       }
     }
 
-    if (event.key.length === 1 && event.key !== "Unidentified" && !(event.ctrlKey || event.metaKey)) {
+    if (event.key.length === 1 && event.key !== "Unidentified" && !getModifierState(event).mod) {
       inputRef?.focus()
     }
   }

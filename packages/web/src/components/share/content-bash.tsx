@@ -1,7 +1,8 @@
-import style from "./content-bash.module.css"
-import { createResource, createSignal } from "solid-js"
-import { createOverflow } from "./common"
 import { codeToHtml } from "shiki"
+
+const stripOSC = (str: string): string => {
+  return str.replace(/\x1b\][0-9]+;[^\x07\x1b]*[\x07\x1b]/g, "")
+}
 
 interface Props {
   command: string
@@ -27,7 +28,7 @@ export function ContentBash(props: Props) {
   const [outputHtml] = createResource(
     () => props.output,
     async (output) => {
-      return codeToHtml(output || "", {
+      return codeToHtml(stripOSC(output || ""), {
         lang: "console",
         themes: {
           light: "github-light",

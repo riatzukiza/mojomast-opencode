@@ -26,6 +26,7 @@ import { useRenderer } from "@opentui/solid"
 import { Editor } from "@tui/util/editor"
 import { useExit } from "../../context/exit"
 import { Clipboard } from "../../util/clipboard"
+import { TerminalUtil } from "../../../../util/terminal"
 import type { FilePart } from "@opencode-ai/sdk"
 import { TuiEvent } from "../../event"
 
@@ -67,8 +68,6 @@ export function Prompt(props: PromptProps) {
     const submitBindings = keybind.all.input_submit || []
 
     return [
-      { name: "return", action: "submit" },
-      { name: "return", meta: true, action: "newline" },
       ...newlineBindings.map((binding) => ({
         name: binding.name,
         ctrl: binding.ctrl || undefined,
@@ -638,11 +637,17 @@ export function Prompt(props: PromptProps) {
                   }
                 } catch {}
 
-                const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-                if (lineCount >= 5) {
+                const lineCount = (pastedContent.match(/
+/g)?.length ?? 0) + 1
+                const isGitBash = TerminalUtil.getTerminalCapabilities().isGitBash
+                // Adjust threshold for Git Bash due to potential rendering differences
+                const pasteThreshold = isGitBash ? 3 : 5
+                if (lineCount >= pasteThreshold) {
                   event.preventDefault()
                   const currentOffset = input.visualCursor.offset
-                  const virtualText = `[Pasted ~${lineCount} lines]`
+                  const virtualText = isGitBash 
+                    ? `[📋 ${lineCount} lines]` 
+                    : `[Pasted ~${lineCount} lines]`
                   const textToInsert = virtualText + " "
                   const extmarkStart = currentOffset
                   const extmarkEnd = extmarkStart + virtualText.length

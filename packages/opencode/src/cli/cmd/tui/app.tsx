@@ -1,6 +1,7 @@
 import { render, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { Clipboard } from "@tui/util/clipboard"
 import { TextAttributes } from "@opentui/core"
+import { detectNativeLibrarySupport, isNativeLibraryError } from "./util/native-detection"
 import { RouteProvider, useRoute, type Route } from "@tui/context/route"
 import { Switch, Match, createEffect, untrack, ErrorBoundary, createSignal } from "solid-js"
 import { Installation } from "@/installation"
@@ -28,6 +29,20 @@ import type { SessionRoute } from "./context/route"
 import { Session as SessionApi } from "@/session"
 import { TuiEvent } from "./event"
 import { KVProvider, useKV } from "./context/kv"
+import { stripOSC } from "@/util/osc"
+
+function shouldFilterOSC(): boolean {
+  // Filter OSC in environments where they cause stray output
+  // Common indicators: Git Bash, Windows Terminal, certain CI environments
+  const term = process.env.TERM || ""
+  const shell = process.env.SHELL || ""
+  const isWindows = process.platform === "win32"
+  const isGitBash = shell.includes("git") || term.includes("git")
+  const isWSL = process.env.WSL_DISTRO_NAME !== undefined
+  const isCI = process.env.CI !== undefined
+
+  return isWindows || isGitBash || isWSL || isCI
+}
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
   return new Promise((resolve) => {
@@ -77,7 +92,11 @@ async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
 
     process.stdin.setRawMode(true)
     process.stdin.on("data", handler)
-    process.stdout.write("\x1b]11;?\x07")
+    
+    // Only send OSC 11 if not in filtering environment
+    if (!shouldFilterOSC()) {
+      process.stdout.write("\x1b]11;?\x07")
+    }
 
     timeout = setTimeout(() => {
       cleanup()
@@ -96,6 +115,22 @@ export function tui(input: {
 }) {
   // promise to prevent immediate exit
   return new Promise<void>(async (resolve) => {
+    // Detect native library support first
+    const detection = await detectNativeLibrarySupport()
+    if (!detection.supported) {
+      console.error(`\n❌ TUI Error: ${detection.error}\n`)
+      if (detection.suggestions && detection.suggestions.length > 0) {
+        console.error("💡 Suggestions:")
+        detection.suggestions.forEach((suggestion, index) => {
+          console.error(`  ${index + 1}. ${suggestion}`)
+        })
+      }
+      console.error("")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
     const mode = await getTerminalBackgroundColor()
 
     const routeData: Route | undefined = input.sessionID
@@ -110,7 +145,31 @@ export function tui(input: {
       resolve()
     }
 
-    render(
+    // Dynamic import of render function after detection passes
+    let renderModule: typeof import("@opentui/solid") | null = null
+    try {
+      renderModule = await import("@opentui/solid")
+    } catch (error) {
+      console.error(`\n❌ Failed to load TUI renderer: ${error instanceof Error ? error.message : String(error)}\n`)
+      console.error("💡 Suggestions:")
+      console.error("  1. Try rebuilding: bun run build")
+      console.error("  2. Use the web UI instead: opencode web")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
+    if (!renderModule) {
+      console.error("\n❌ TUI renderer module not available\n")
+      console.error("💡 Suggestions:")
+      console.error("  1. Try reinstalling dependencies: bun install")
+      console.error("  2. Use the web UI instead: opencode web")
+      await input.onExit?.()
+      resolve()
+      return
+    }
+
+    renderModule.render(
       () => {
         return (
           <ErrorBoundary
@@ -150,6 +209,15 @@ export function tui(input: {
           </ErrorBoundary>
         )
       },
+      {
+        targetFps: 60,
+        gatherStats: false,
+        exitOnCtrlC: false,
+        useKittyKeyboard: true,
+      },
+    )
+  })
+},
       {
         targetFps: 60,
         gatherStats: false,
@@ -373,8 +441,13 @@ function App() {
           const base64 = Buffer.from(text).toString("base64")
           const osc52 = `\x1b]52;c;${base64}\x07`
           const finalOsc52 = process.env["TMUX"] ? `\x1bPtmux;\x1b${osc52}\x1b\\` : osc52
-          /* @ts-expect-error */
-          renderer.writeOut(finalOsc52)
+          
+          // Only write OSC 52 if not in filtering environment
+          if (!shouldFilterOSC()) {
+            /* @ts-expect-error */
+            renderer.writeOut(finalOsc52)
+          }
+          
           await Clipboard.copy(text)
             .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
             .catch(toast.error)
@@ -444,6 +517,8 @@ function ErrorComponent(props: { error: Error; reset: () => void; onExit: () => 
   })
   const [copied, setCopied] = createSignal(false)
 
+  const isNativeLibError = isNativeLibraryError(props.error)
+
   const issueURL = new URL("https://github.com/sst/opencode/issues/new?template=bug-report.yml")
 
   if (props.error.message) {
@@ -466,12 +541,26 @@ function ErrorComponent(props: { error: Error; reset: () => void; onExit: () => 
   return (
     <box flexDirection="column" gap={1}>
       <box flexDirection="row" gap={1} alignItems="center">
-        <text attributes={TextAttributes.BOLD}>Please report an issue.</text>
+        <text attributes={TextAttributes.BOLD}>
+          {isNativeLibraryError ? "Native Library Error" : "Please report an issue"}.
+        </text>
         <box onMouseUp={copyIssueURL} backgroundColor="#565f89" padding={1}>
           <text attributes={TextAttributes.BOLD}>Copy issue URL (exception info pre-filled)</text>
         </box>
         {copied() && <text>Successfully copied</text>}
       </box>
+      
+      {isNativeLibError && (
+        <box flexDirection="column" gap={1}>
+          <text>This appears to be a native library loading error.</text>
+          <text>💡 Suggestions:</text>
+          <text>  1. Try installing dependencies: bun install</text>
+          <text>  2. Try rebuilding: bun run build</text>
+          <text>  3. Check if your platform is supported</text>
+          <text>  4. Use the web UI instead: opencode web</text>
+        </box>
+      )}
+      
       <box flexDirection="row" gap={2} alignItems="center">
         <text>A fatal error occurred!</text>
         <box onMouseUp={props.reset} backgroundColor="#565f89" padding={1}>

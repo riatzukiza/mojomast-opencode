@@ -1,10 +1,5 @@
-import { Button, Icon, IconButton, Select, SelectDialog } from "@opencode-ai/ui"
-import { useFilteredList } from "@opencode-ai/ui/hooks"
-import { createEffect, on, Component, createMemo, Show, For, onMount, onCleanup } from "solid-js"
-import { createStore } from "solid-js/store"
-import { FileIcon } from "@/ui"
-import { getDirectory, getFilename } from "@/utils"
 import { createFocusSignal } from "@solid-primitives/active-element"
+import { getModifierState } from "@/utils/modifiers"
 import { TextSelection, useLocal } from "@/context/local"
 import { DateTime } from "luxon"
 
@@ -290,7 +285,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       event.preventDefault()
       return
     }
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !getModifierState(event).shift) {
       handleSubmit(event)
     }
   }

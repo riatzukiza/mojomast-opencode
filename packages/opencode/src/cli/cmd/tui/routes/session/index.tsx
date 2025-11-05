@@ -1,21 +1,5 @@
-import {
-  createContext,
-  createEffect,
-  createMemo,
-  createSignal,
-  For,
-  Match,
-  Show,
-  Switch,
-  useContext,
-  type Component,
-} from "solid-js"
-import { Dynamic } from "solid-js/web"
-import path from "path"
-import { useRoute, useRouteData } from "@tui/context/route"
-import { useSync } from "@tui/context/sync"
-import { SplitBorder } from "@tui/component/border"
 import { useTheme } from "@tui/context/theme"
+import { stripOSC } from "@opencode/util/osc"
 import { BoxRenderable, ScrollBoxRenderable, addDefaultParsers } from "@opentui/core"
 import { Prompt, type PromptRef } from "@tui/component/prompt"
 import type {
@@ -1016,11 +1000,13 @@ function ToolTitle(props: { fallback: string; when: any; icon: string; children:
   )
 }
 
+
+
 ToolRegistry.register<typeof BashTool>({
   name: "bash",
   container: "block",
   render(props) {
-    const output = createMemo(() => Bun.stripANSI(props.metadata.output?.trim() ?? ""))
+    const output = createMemo(() => Bun.stripANSI(stripOSC(props.metadata.output?.trim() ?? "")))
     const { theme } = useTheme()
     return (
       <>

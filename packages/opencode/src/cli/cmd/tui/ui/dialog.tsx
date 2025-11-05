@@ -32,7 +32,7 @@ export function Dialog(
           e.stopPropagation()
         }}
         width={props.size === "large" ? 80 : 60}
-        maxWidth={dimensions().width - 2}
+        maxWidth={Math.max(60, dimensions().width - 2)}
         backgroundColor={theme.backgroundPanel}
         paddingTop={1}
       >
@@ -64,10 +64,11 @@ function init() {
   const renderer = useRenderer()
   let focus: Renderable | null
   function refocus() {
-    setTimeout(() => {
-      if (!focus) return
-      if (focus.isDestroyed) return
-      function find(item: Renderable) {
+  setTimeout(() => {
+    if (!focus) return
+    if (focus.isDestroyed) return
+    try {
+      function find(item: Renderable): boolean {
         for (const child of item.getChildren()) {
           if (child === focus) return true
           if (find(child)) return true
@@ -77,7 +78,12 @@ function init() {
       const found = find(renderer.root)
       if (!found) return
       focus.focus()
-    }, 1)
+    } catch (error) {
+      // Silently handle focus errors to prevent blank screen
+      console.debug('Focus error:', error)
+    }
+  }, 1)
+}
   }
 
   return {
