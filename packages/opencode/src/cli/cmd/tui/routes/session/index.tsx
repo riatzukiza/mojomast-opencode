@@ -473,6 +473,14 @@ export function Session() {
   const dialog = useDialog()
   const renderer = useRenderer()
 
+  createEffect(() => {
+    if (dialog.stack.length === 0) {
+      setTimeout(() => {
+        prompt?.focus()
+      }, 1)
+    }
+  })
+
   return (
     <context.Provider
       value={{
