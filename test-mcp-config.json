@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "test-server": {
+      "type": "remote",
+      "url": "http://localhost:9999",
+      "enabled": true
+    },
+    "invalid-host": {
+      "type": "remote",
+      "url": "http://nonexistent-host-12345.com",
+      "enabled": true
+    }
+  }
+}

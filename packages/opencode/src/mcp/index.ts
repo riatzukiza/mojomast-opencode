@@ -41,6 +41,9 @@ export namespace MCP {
         .object({
           status: z.literal("failed"),
           error: z.string(),
+          category: z.enum(["socket", "timeout", "authentication", "configuration", "server"]).optional(),
+          details: z.record(z.any()).optional(),
+          suggestions: z.array(z.string()).optional(),
         })
         .meta({
           ref: "MCPStatusFailed",
@@ -102,6 +105,57 @@ export namespace MCP {
     let mcpClient: MCPClient | undefined
     let status: Status | undefined
 
+    const categorizeError = (error: Error | string): { category: string, message: string, suggestions: string[] } => {
+      const errorMessage = error instanceof Error ? error.message : error
+      const lowerMessage = errorMessage.toLowerCase()
+      
+      if (lowerMessage.includes("econnrefused") || lowerMessage.includes("connection refused")) {
+        return {
+          category: "socket",
+          message: "Connection refused - MCP server not running or unreachable",
+          suggestions: ["Start the MCP server", "Check server address and port", "Verify firewall settings"]
+        }
+      }
+      
+      if (lowerMessage.includes("etimedout") || lowerMessage.includes("timeout")) {
+        return {
+          category: "timeout", 
+          message: "Connection timeout - server not responding",
+          suggestions: ["Check network connectivity", "Verify server is running", "Increase timeout configuration"]
+        }
+      }
+      
+      if (lowerMessage.includes("enotfound") || lowerMessage.includes("getaddrinfo")) {
+        return {
+          category: "socket",
+          message: "Host not found - invalid server address",
+          suggestions: ["Check server URL", "Verify DNS configuration", "Use IP address instead"]
+        }
+      }
+      
+      if (lowerMessage.includes("failed to get tools")) {
+        return {
+          category: "server",
+          message: "Tool fetch failed - server error",
+          suggestions: ["Check MCP server logs", "Verify server configuration", "Restart MCP server"]
+        }
+      }
+      
+      if (lowerMessage.includes("401") || lowerMessage.includes("403") || lowerMessage.includes("unauthorized")) {
+        return {
+          category: "authentication",
+          message: "Authentication failed - invalid credentials",
+          suggestions: ["Check API keys", "Verify authentication headers", "Update server permissions"]
+        }
+      }
+      
+      return {
+        category: "server",
+        message: errorMessage,
+        suggestions: ["Check MCP server logs", "Verify server configuration"]
+      }
+    }
+
     if (mcp.type === "remote") {
       const transports = [
         {
@@ -121,7 +175,8 @@ export namespace MCP {
           }),
         },
       ]
-      let lastError: Error | undefined
+      const transportErrors: Array<{ name: string, error: Error }> = []
+      
       for (const { name, transport } of transports) {
         const result = await experimental_createMCPClient({
           name: "opencode",
@@ -134,20 +189,35 @@ export namespace MCP {
             return true
           })
           .catch((error) => {
-            lastError = error instanceof Error ? error : new Error(String(error))
+            const errorObj = error instanceof Error ? error : new Error(String(error))
+            transportErrors.push({ name, error: errorObj })
             log.debug("transport connection failed", {
               key,
               transport: name,
               url: mcp.url,
-              error: lastError.message,
+              error: errorObj.message,
             })
-            status = {
-              status: "failed",
-              error: lastError.message,
-            }
             return false
           })
         if (result) break
+      }
+      
+      if (!mcpClient && transportErrors.length > 0) {
+        const lastError = transportErrors[transportErrors.length - 1].error
+        const categorized = categorizeError(lastError)
+        status = {
+          status: "failed",
+          error: categorized.message,
+          category: categorized.category as any,
+          details: {
+            transportErrors: transportErrors.map(t => ({
+              transport: t.name,
+              error: t.error.message
+            })),
+            url: mcp.url
+          },
+          suggestions: categorized.suggestions
+        }
       }
     }
 
@@ -173,22 +243,33 @@ export namespace MCP {
           }
         })
         .catch((error) => {
+          const errorObj = error instanceof Error ? error : new Error(String(error))
+          const categorized = categorizeError(errorObj)
           log.error("local mcp startup failed", {
             key,
             command: mcp.command,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorObj.message,
           })
           status = {
             status: "failed",
-            error: error instanceof Error ? error.message : String(error),
+            error: categorized.message,
+            category: categorized.category as any,
+            details: {
+              command: mcp.command,
+              originalError: errorObj.message
+            },
+            suggestions: categorized.suggestions
           }
         })
     }
 
     if (!status) {
+      const categorized = categorizeError("Unknown error")
       status = {
         status: "failed",
-        error: "Unknown error",
+        error: categorized.message,
+        category: categorized.category as any,
+        suggestions: categorized.suggestions
       }
     }
 
@@ -199,12 +280,22 @@ export namespace MCP {
       }
     }
 
-    const result = await withTimeout(mcpClient.tools(), mcp.timeout ?? 5000).catch(() => {})
+    const result = await withTimeout(mcpClient.tools(), mcp.timeout ?? 5000).catch((error) => {
+      const categorized = categorizeError(error instanceof Error ? error : new Error(String(error)))
+      return categorized
+    })
+    
     if (!result) {
       await mcpClient.close()
+      const categorized = categorizeError("Failed to get tools")
       status = {
         status: "failed",
-        error: "Failed to get tools",
+        error: categorized.message,
+        category: categorized.category as any,
+        details: {
+          timeout: mcp.timeout ?? 5000
+        },
+        suggestions: [...(categorized.suggestions || []), "Increase timeout configuration"]
       }
       return {
         mcpClient: undefined,

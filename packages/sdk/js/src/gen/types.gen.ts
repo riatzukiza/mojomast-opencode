@@ -1067,6 +1067,9 @@ export type McpStatusDisabled = {
 export type McpStatusFailed = {
   status: "failed"
   error: string
+  category?: "socket" | "timeout" | "authentication" | "configuration" | "server"
+  details?: Record<string, any>
+  suggestions?: string[]
 }
 
 export type McpStatus = McpStatusConnected | McpStatusDisabled | McpStatusFailed

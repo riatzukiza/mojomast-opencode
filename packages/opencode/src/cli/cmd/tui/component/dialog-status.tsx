@@ -2,6 +2,16 @@ import { TextAttributes } from "@opentui/core"
 import { useTheme } from "../context/theme"
 import { useSync } from "@tui/context/sync"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
+import type { McpStatus } from "@opencode-ai/sdk"
+
+// Local type augmentation to include new MCP status fields
+type EnhancedMcpStatusFailed = McpStatus & {
+  status: "failed"
+  error: string
+  category?: "socket" | "timeout" | "authentication" | "configuration" | "server"
+  details?: Record<string, any>
+  suggestions?: string[]
+}
 
 export type DialogStatusProps = {}
 
@@ -42,7 +52,29 @@ export function DialogStatus() {
                   <span style={{ fg: theme.textMuted }}>
                     <Switch>
                       <Match when={item.status === "connected"}>Connected</Match>
-                      <Match when={item.status === "failed" && item}>{(val) => val().error}</Match>
+                      <Match when={item.status === "failed"}>
+                        <box>
+                          <text>{(item as EnhancedMcpStatusFailed).error}</text>
+                          <Show
+                            when={
+                              (item as EnhancedMcpStatusFailed).suggestions &&
+                              (item as EnhancedMcpStatusFailed).suggestions!.length > 0
+                            }
+                          >
+                            <text fg={theme.textMuted}>
+                              <br />
+                              Suggestions:
+                              <For each={(item as EnhancedMcpStatusFailed).suggestions!}>
+                                {(suggestion) => (
+                                  <text>
+                                    <br />• {suggestion}
+                                  </text>
+                                )}
+                              </For>
+                            </text>
+                          </Show>
+                        </box>
+                      </Match>
                       <Match when={item.status === "disabled"}>Disabled in configuration</Match>
                     </Switch>
                   </span>
