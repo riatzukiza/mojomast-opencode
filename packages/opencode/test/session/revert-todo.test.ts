@@ -151,4 +151,59 @@ describe("SessionRevert and Todo integration", () => {
       },
     })
   })
+
+  test("undoing among multiple todo updates restores the previous plan", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+
+        const initialTodos: Todo.Info[] = [
+          {
+            id: "step-1",
+            content: "initial plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        await writeTodoMessage(session.id, initialTodos)
+
+        const secondTodos: Todo.Info[] = [
+          {
+            id: "step-2",
+            content: "refined plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        await writeTodoMessage(session.id, secondTodos)
+
+        const thirdTodos: Todo.Info[] = [
+          {
+            id: "step-3",
+            content: "latest plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        const thirdMessageID = await writeTodoMessage(session.id, thirdTodos)
+
+        await SessionRevert.revert({
+          sessionID: session.id,
+          messageID: thirdMessageID,
+        })
+
+        const afterUndo = await Todo.get(session.id)
+        expect(afterUndo).toEqual(secondTodos)
+
+        const sessionAfterRevert = await Session.get(session.id)
+        await SessionRevert.cleanup(sessionAfterRevert)
+
+        const afterCleanup = await Todo.get(session.id)
+        expect(afterCleanup).toEqual(secondTodos)
+
+        await Session.remove(session.id)
+      },
+    })
+  })
 })
