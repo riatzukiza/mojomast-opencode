@@ -74,7 +74,9 @@ export const EditTool = Tool.define("edit", {
           })
         }
         await Bun.write(filePath, params.newString)
-        const afterStats = await Bun.file(filePath).stat().catch(() => undefined)
+        const afterStats = await Bun.file(filePath)
+          .stat()
+          .catch(() => undefined)
         if (afterStats) {
           FileTime.wrote(ctx.sessionID, filePath, afterStats.mtime)
         }

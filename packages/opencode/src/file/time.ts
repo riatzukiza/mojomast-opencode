@@ -10,10 +10,12 @@ export namespace FileTime {
       }
     } = {}
     const writes: {
-      [path: string]: {
-        sessionID: string
-        time: Date
-      } | undefined
+      [path: string]:
+        | {
+            sessionID: string
+            time: Date
+          }
+        | undefined
     } = {}
     return {
       read,
