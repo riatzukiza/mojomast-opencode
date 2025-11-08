@@ -206,4 +206,114 @@ describe("SessionRevert and Todo integration", () => {
       },
     })
   })
+
+  test("undoing a non-todo message keeps the latest plan", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+
+        const initialTodos: Todo.Info[] = [
+          {
+            id: "step-1",
+            content: "initial plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        await writeTodoMessage(session.id, initialTodos)
+
+        const secondTodos: Todo.Info[] = [
+          {
+            id: "step-2",
+            content: "refined plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        await writeTodoMessage(session.id, secondTodos)
+
+        const laterMessageID = Identifier.ascending("message")
+        await Session.updateMessage({
+          id: laterMessageID,
+          sessionID: session.id,
+          role: "user",
+          time: {
+            created: Date.now(),
+          },
+          summary: {
+            diffs: [],
+          },
+        } as MessageV2.User)
+
+        await SessionRevert.revert({
+          sessionID: session.id,
+          messageID: laterMessageID,
+        })
+
+        const afterUndo = await Todo.get(session.id)
+        expect(afterUndo).toEqual(secondTodos)
+
+        const sessionAfterRevert = await Session.get(session.id)
+        await SessionRevert.cleanup(sessionAfterRevert)
+
+        const afterCleanup = await Todo.get(session.id)
+        expect(afterCleanup).toEqual(secondTodos)
+
+        await Session.remove(session.id)
+      },
+    })
+  })
+
+  test("undoing a todowrite part reverts to the previous plan", async () => {
+    await Instance.provide({
+      directory: projectRoot,
+      fn: async () => {
+        const session = await Session.create({})
+
+        const initialTodos: Todo.Info[] = [
+          {
+            id: "step-1",
+            content: "initial plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        await writeTodoMessage(session.id, initialTodos)
+
+        const updatedTodos: Todo.Info[] = [
+          {
+            id: "step-2",
+            content: "updated plan step",
+            status: "pending",
+            priority: "high",
+          },
+        ]
+        const messageID = await writeTodoMessage(session.id, updatedTodos)
+
+        const messages = await Session.messages({ sessionID: session.id })
+        const targetMessage = messages.find((msg) => msg.info.id === messageID)
+        if (!targetMessage) throw new Error("expected message to exist")
+        const toolPart = targetMessage.parts.find((part) => part.type === "tool")
+        if (!toolPart) throw new Error("expected todowrite tool part")
+
+        await SessionRevert.revert({
+          sessionID: session.id,
+          messageID,
+          partID: toolPart.id,
+        })
+
+        const afterUndo = await Todo.get(session.id)
+        expect(afterUndo).toEqual(initialTodos)
+
+        const sessionAfterRevert = await Session.get(session.id)
+        await SessionRevert.cleanup(sessionAfterRevert)
+
+        const afterCleanup = await Todo.get(session.id)
+        expect(afterCleanup).toEqual(initialTodos)
+
+        await Session.remove(session.id)
+      },
+    })
+  })
 })
