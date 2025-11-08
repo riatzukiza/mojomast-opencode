@@ -17,6 +17,7 @@ import { SessionPrompt } from "./prompt"
 import { fn } from "@/util/fn"
 import { Command } from "../command"
 import { Snapshot } from "@/snapshot"
+import { Todo } from "./todo"
 
 export namespace Session {
   const log = Log.create({ service: "session" })
@@ -66,6 +67,7 @@ export namespace Session {
           partID: z.string().optional(),
           snapshot: z.string().optional(),
           diff: z.string().optional(),
+          todos: Todo.Info.array().optional(),
         })
         .optional(),
     })
