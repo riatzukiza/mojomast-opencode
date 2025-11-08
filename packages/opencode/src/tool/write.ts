@@ -55,6 +55,10 @@ export const WriteTool = Tool.define("write", {
       })
 
     await Bun.write(filepath, params.content)
+    const stats = await Bun.file(filepath).stat().catch(() => undefined)
+    if (stats) {
+      FileTime.wrote(ctx.sessionID, filepath, stats.mtime)
+    }
     await Bus.publish(File.Event.Edited, {
       file: filepath,
     })

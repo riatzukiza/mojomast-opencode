@@ -74,6 +74,10 @@ export const EditTool = Tool.define("edit", {
           })
         }
         await Bun.write(filePath, params.newString)
+        const afterStats = await Bun.file(filePath).stat().catch(() => undefined)
+        if (afterStats) {
+          FileTime.wrote(ctx.sessionID, filePath, afterStats.mtime)
+        }
         await Bus.publish(File.Event.Edited, {
           file: filePath,
         })
@@ -104,6 +108,10 @@ export const EditTool = Tool.define("edit", {
       }
 
       await file.write(contentNew)
+      const afterStats = await file.stat().catch(() => undefined)
+      if (afterStats) {
+        FileTime.wrote(ctx.sessionID, filePath, afterStats.mtime)
+      }
       await Bus.publish(File.Event.Edited, {
         file: filePath,
       })

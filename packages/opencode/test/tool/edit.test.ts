@@ -66,4 +66,54 @@ describe("tool.edit", () => {
       },
     })
   })
+
+  test("requires file read before edit", async () => {
+    await using fixture = await tmpdir()
+
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        const filePath = path.join(fixture.path, "needs-read.txt")
+        await Bun.write(filePath, "original")
+
+        await expect(
+          editTool.execute(
+            {
+              filePath,
+              oldString: "original",
+              newString: "updated",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow(/You must read the file/)
+      },
+    })
+  })
+
+  test("fails when file changes outside the session", async () => {
+    await using fixture = await tmpdir()
+
+    await Instance.provide({
+      directory: fixture.path,
+      fn: async () => {
+        const filePath = path.join(fixture.path, "external-change.txt")
+        await Bun.write(filePath, "initial")
+        FileTime.read(ctx.sessionID, filePath)
+
+        await Bun.sleep(10)
+        await Bun.write(filePath, "external contents")
+
+        await expect(
+          editTool.execute(
+            {
+              filePath,
+              oldString: "external contents",
+              newString: "session edit",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow(/has been modified since it was last read/)
+      },
+    })
+  })
 })

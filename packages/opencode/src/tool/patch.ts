@@ -25,6 +25,13 @@ export const PatchTool = Tool.define("patch", {
       throw new Error("patchText is required")
     }
 
+    const markWrite = async (filePath: string) => {
+      const stats = await fs.stat(filePath).catch(() => null)
+      if (stats) {
+        FileTime.wrote(ctx.sessionID, filePath, stats.mtime)
+      }
+    }
+
     // Parse the patch to get hunks
     let hunks: Patch.Hunk[]
     try {
@@ -164,11 +171,13 @@ export const PatchTool = Tool.define("patch", {
             await fs.mkdir(addDir, { recursive: true })
           }
           await fs.writeFile(change.filePath, change.newContent, "utf-8")
+          await markWrite(change.filePath)
           changedFiles.push(change.filePath)
           break
 
         case "update":
           await fs.writeFile(change.filePath, change.newContent, "utf-8")
+          await markWrite(change.filePath)
           changedFiles.push(change.filePath)
           break
 
@@ -181,14 +190,17 @@ export const PatchTool = Tool.define("patch", {
             }
             // Write to new location
             await fs.writeFile(change.movePath, change.newContent, "utf-8")
+            await markWrite(change.movePath)
             // Remove original
             await fs.unlink(change.filePath)
+            FileTime.forget(change.filePath)
             changedFiles.push(change.movePath)
           }
           break
 
         case "delete":
           await fs.unlink(change.filePath)
+          FileTime.forget(change.filePath)
           changedFiles.push(change.filePath)
           break
       }
