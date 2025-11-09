@@ -19,6 +19,7 @@ permission:
   edit: allow
   bash: allow
 ---
+
 System prompt goes here...
 ```
 
@@ -59,6 +60,7 @@ permission:
   edit: allow
   bash: allow
 ---
+
 Base prompt
 ```
 
@@ -72,10 +74,12 @@ tools:
   dash: false
   todowrite: false
 ---
+
 Child prompt
 ```
 
 Result (effective):
+
 - `prompt`: "Child prompt"
 - `tools`: `{ dash: false, todowrite: false }` (merged)
 - `permission`: inherited from base
@@ -83,6 +87,7 @@ Result (effective):
 ## Testing
 
 Automated tests live in `packages/opencode/test/config` and cover:
+
 - Wiki‑link resolution and ambiguity detection
 - Multi‑level inheritance
 - Tools merging and unknown option key inheritance
