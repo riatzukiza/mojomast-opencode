@@ -7,7 +7,7 @@ import { Installation } from "@/installation"
 import { Global } from "@/global"
 import { DialogProvider, useDialog } from "@tui/ui/dialog"
 import { SDKProvider, useSDK } from "@tui/context/sdk"
-import { SyncProvider, useSync } from "@tui/context/sync"
+import { SyncProvider } from "@tui/context/sync"
 import { LocalProvider, useLocal } from "@tui/context/local"
 import { DialogModel } from "@tui/component/dialog-model"
 import { DialogStatus } from "@tui/component/dialog-status"
@@ -24,12 +24,14 @@ import { PromptHistoryProvider } from "./component/prompt/history"
 import { DialogAlert } from "./ui/dialog-alert"
 import { ToastProvider, useToast } from "./ui/toast"
 import { ExitProvider, useExit } from "./context/exit"
-import type { SessionRoute } from "./context/route"
 import { Session as SessionApi } from "@/session"
 import { TuiEvent } from "./event"
 import { KVProvider, useKV } from "./context/kv"
 
 async function getTerminalBackgroundColor(): Promise<"dark" | "light"> {
+  // can't set raw mode if not a TTY
+  if (!process.stdin.isTTY) return "dark"
+
   return new Promise((resolve) => {
     let timeout: NodeJS.Timeout
 
@@ -113,11 +115,7 @@ export function tui(input: {
     render(
       () => {
         return (
-          <ErrorBoundary
-            fallback={(error, reset) => (
-              <ErrorComponent error={error} reset={reset} onExit={onExit} />
-            )}
-          >
+          <ErrorBoundary fallback={(error, reset) => <ErrorComponent error={error} reset={reset} onExit={onExit} />}>
             <ExitProvider onExit={onExit}>
               <KVProvider>
                 <ToastProvider>
@@ -170,38 +168,9 @@ function App() {
   const kv = useKV()
   const command = useCommandDialog()
   const { event } = useSDK()
-  const sync = useSync()
   const toast = useToast()
-  const [sessionExists, setSessionExists] = createSignal(false)
   const { theme, mode, setMode } = useTheme()
   const exit = useExit()
-
-  useKeyboard(async (evt) => {
-    if (evt.meta && evt.name === "t") {
-      renderer.toggleDebugOverlay()
-      return
-    }
-
-    if (evt.meta && evt.name === "d") {
-      renderer.console.toggle()
-      return
-    }
-  })
-
-  // Make sure session is valid, otherwise redirect to home
-  createEffect(async () => {
-    if (route.data.type === "session") {
-      const data = route.data as SessionRoute
-      await sync.session.sync(data.sessionID).catch(() => {
-        toast.show({
-          message: `Session not found: ${data.sessionID}`,
-          variant: "error",
-        })
-        return route.navigate({ type: "home" })
-      })
-      setSessionExists(true)
-    }
-  })
 
   createEffect(() => {
     console.log(JSON.stringify(route.data))
@@ -324,6 +293,24 @@ function App() {
       onSelect: exit,
       category: "System",
     },
+    {
+      title: "Toggle debug panel",
+      category: "System",
+      value: "app.debug",
+      onSelect: (dialog) => {
+        renderer.toggleDebugOverlay()
+        dialog.clear()
+      },
+    },
+    {
+      title: "Toggle console",
+      category: "System",
+      value: "app.fps",
+      onSelect: (dialog) => {
+        renderer.console.toggle()
+        dialog.clear()
+      },
+    },
   ])
 
   createEffect(() => {
@@ -354,12 +341,34 @@ function App() {
 
   event.on(SessionApi.Event.Deleted.type, (evt) => {
     if (route.data.type === "session" && route.data.sessionID === evt.properties.info.id) {
+      dialog.clear()
       route.navigate({ type: "home" })
       toast.show({
         variant: "info",
         message: "The current session was deleted",
       })
     }
+  })
+
+  event.on(SessionApi.Event.Error.type, (evt) => {
+    const error = evt.properties.error
+    const message = (() => {
+      if (!error) return "An error occured"
+
+      if (typeof error === "object") {
+        const data = error.data
+        if ("message" in data && typeof data.message === "string") {
+          return data.message
+        }
+      }
+      return String(error)
+    })()
+
+    toast.show({
+      variant: "error",
+      message,
+      duration: 5000,
+    })
   })
 
   return (
@@ -387,7 +396,7 @@ function App() {
           <Match when={route.data.type === "home"}>
             <Home />
           </Match>
-          <Match when={route.data.type === "session" && sessionExists()}>
+          <Match when={route.data.type === "session"}>
             <Session />
           </Match>
         </Switch>
@@ -400,12 +409,7 @@ function App() {
         flexShrink={0}
       >
         <box flexDirection="row">
-          <box
-            flexDirection="row"
-            backgroundColor={theme.backgroundElement}
-            paddingLeft={1}
-            paddingRight={1}
-          >
+          <box flexDirection="row" backgroundColor={theme.backgroundElement} paddingLeft={1} paddingRight={1}>
             <text fg={theme.textMuted}>open</text>
             <text fg={theme.text} attributes={TextAttributes.BOLD}>
               code{" "}
@@ -421,11 +425,7 @@ function App() {
             tab
           </text>
           <text fg={local.agent.color(local.agent.current().name)}>{""}</text>
-          <text
-            bg={local.agent.color(local.agent.current().name)}
-            fg={theme.background}
-            wrapMode={undefined}
-          >
+          <text bg={local.agent.color(local.agent.current().name)} fg={theme.background} wrapMode={undefined}>
             <span style={{ bold: true }}> {local.agent.current().name.toUpperCase()}</span>
             <span> AGENT </span>
           </text>
