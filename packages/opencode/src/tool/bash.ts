@@ -43,7 +43,12 @@ export const BashTool = Tool.define("bash", {
   parameters: z.object({
     command: z.string().describe("The command to execute"),
     timeout: z.number().describe("Optional timeout in milliseconds").optional(),
-    cwd: z.string().describe("The working directory for the command. Must be within the project directory. If not specified, uses the project root directory.").optional(),
+    cwd: z
+      .string()
+      .describe(
+        "The working directory for the command. Must be within the project directory. If not specified, uses the project root directory.",
+      )
+      .optional(),
     description: z
       .string()
       .describe(
@@ -55,7 +60,7 @@ export const BashTool = Tool.define("bash", {
       throw new Error(`Invalid timeout value: ${params.timeout}. Timeout must be a positive number.`)
     }
     const timeout = Math.min(params.timeout ?? DEFAULT_TIMEOUT, MAX_TIMEOUT)
-    
+
     // Validate and resolve cwd parameter
     let workingDirectory = Instance.directory
     if (params.cwd) {
@@ -65,20 +70,18 @@ export const BashTool = Tool.define("bash", {
         .nothrow()
         .text()
         .then((x) => x.trim())
-      
+
       if (!resolvedCwd) {
         throw new Error(`Invalid working directory: ${params.cwd}`)
       }
-      
+
       if (!Filesystem.contains(Instance.directory, resolvedCwd)) {
-        throw new Error(
-          `Working directory ${resolvedCwd} is outside of project directory ${Instance.directory}`,
-        )
+        throw new Error(`Working directory ${resolvedCwd} is outside of project directory ${Instance.directory}`)
       }
-      
+
       workingDirectory = resolvedCwd
     }
-    
+
     const tree = await parser().then((p) => p.parse(params.command))
     if (!tree) {
       throw new Error("Failed to parse command")
