@@ -1,17 +1,26 @@
-.DS_Store
-node_modules
-.worktrees
-.sst
-.env
-.idea
-.vscode
-*~
-openapi.json
-playground
-tmp
-dist
-.turbo
-**/.serena
-.serena/
+# Build artifacts
+dist/
+build/
+lib/
+*.tsbuildinfo
 
-.nx/
+# Dependencies 
+node_modules/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
