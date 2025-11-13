@@ -24,3 +24,5 @@ node_modules/
 *.swp
 *.swo
 *~
+.serena/
+.turbo/
