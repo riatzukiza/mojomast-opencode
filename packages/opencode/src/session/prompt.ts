@@ -39,6 +39,7 @@ import { Wildcard } from "../util/wildcard"
 import { MCP } from "../mcp"
 import { LSP } from "../lsp"
 import { ReadTool } from "../tool/read"
+import { PerfStreamStub } from "../perf/perf-stream-stub"
 import { ListTool } from "../tool/ls"
 import { TaskTool } from "../tool/task"
 import { FileTime } from "../file/time"
@@ -225,7 +226,11 @@ export namespace SessionPrompt {
       },
     )
 
+    const stubText = input.parts.flatMap((part) => (part.type === "text" ? [part.text ?? ""] : [])).join(" ")
+    const usePerfStub = PerfStreamStub.isEnabled()
+
     let step = 0
+
     while (true) {
       const msgs: MessageV2.WithParts[] = pipe(
         await getMessages({
@@ -256,155 +261,172 @@ export namespace SessionPrompt {
       await using _ = defer(async () => {
         await processor.end()
       })
-      const doStream = () =>
-        streamText({
-          onError(error) {
-            log.error("stream error", {
-              error,
-            })
-          },
-          async experimental_repairToolCall(input) {
-            const lower = input.toolCall.toolName.toLowerCase()
-            if (lower !== input.toolCall.toolName && tools[lower]) {
-              log.info("repairing tool call", {
-                tool: input.toolCall.toolName,
-                repaired: lower,
+      let finishReason: string | undefined
+      let result: Awaited<ReturnType<typeof processor.process>>
+
+      if (usePerfStub) {
+        result = await PerfStreamStub.run({
+          processor,
+          parentID: userMsg.info.id,
+          sessionID: input.sessionID,
+          text: stubText,
+        })
+        finishReason = "stub"
+      } else {
+        const doStream = () =>
+          streamText({
+            onError(error) {
+              log.error("stream error", {
+                error,
               })
+            },
+            async experimental_repairToolCall(input) {
+              const lower = input.toolCall.toolName.toLowerCase()
+              if (lower !== input.toolCall.toolName && tools[lower]) {
+                log.info("repairing tool call", {
+                  tool: input.toolCall.toolName,
+                  repaired: lower,
+                })
+                return {
+                  ...input.toolCall,
+                  toolName: lower,
+                }
+              }
               return {
                 ...input.toolCall,
-                toolName: lower,
+                input: JSON.stringify({
+                  tool: input.toolCall.toolName,
+                  error: input.error.message,
+                }),
+                toolName: "invalid",
               }
-            }
-            return {
-              ...input.toolCall,
-              input: JSON.stringify({
-                tool: input.toolCall.toolName,
-                error: input.error.message,
-              }),
-              toolName: "invalid",
-            }
-          },
-          headers: {
-            ...(model.providerID === "opencode"
-              ? {
-                  "x-opencode-session": input.sessionID,
-                  "x-opencode-request": userMsg.info.id,
-                }
-              : undefined),
-            ...model.info.headers,
-          },
-          // set to 0, we handle loop
-          maxRetries: 0,
-          activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
-          maxOutputTokens: ProviderTransform.maxOutputTokens(
-            model.providerID,
-            params.options,
-            model.info.limit.output,
-            OUTPUT_TOKEN_MAX,
-          ),
-          abortSignal: abort.signal,
-          providerOptions: ProviderTransform.providerOptions(model.npm, model.providerID, params.options),
-          stopWhen: stepCountIs(1),
-          temperature: params.temperature,
-          topP: params.topP,
-          messages: [
-            ...system.map(
-              (x): ModelMessage => ({
-                role: "system",
-                content: x,
-              }),
-            ),
-            ...MessageV2.toModelMessage(
-              msgs.filter((m) => {
-                if (m.info.role !== "assistant" || m.info.error === undefined) {
-                  return true
-                }
-                if (
-                  MessageV2.AbortedError.isInstance(m.info.error) &&
-                  m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
-                ) {
-                  return true
-                }
-
-                return false
-              }),
-            ),
-          ],
-          tools: model.info.tool_call === false ? undefined : tools,
-          model: wrapLanguageModel({
-            model: model.language,
-            middleware: [
-              {
-                async transformParams(args) {
-                  if (args.type === "stream") {
-                    // @ts-expect-error
-                    args.params.prompt = ProviderTransform.message(args.params.prompt, model.providerID, model.modelID)
+            },
+            headers: {
+              ...(model.providerID === "opencode"
+                ? {
+                    "x-opencode-session": input.sessionID,
+                    "x-opencode-request": userMsg.info.id,
                   }
-                  return args.params
-                },
-              },
+                : undefined),
+              ...model.info.headers,
+            },
+            maxRetries: 0,
+            activeTools: Object.keys(tools).filter((x) => x !== "invalid"),
+            maxOutputTokens: ProviderTransform.maxOutputTokens(
+              model.providerID,
+              params.options,
+              model.info.limit.output,
+              OUTPUT_TOKEN_MAX,
+            ),
+            abortSignal: abort.signal,
+            providerOptions: ProviderTransform.providerOptions(model.npm, model.providerID, params.options),
+            stopWhen: stepCountIs(1),
+            temperature: params.temperature,
+            topP: params.topP,
+            messages: [
+              ...system.map(
+                (x): ModelMessage => ({
+                  role: "system",
+                  content: x,
+                }),
+              ),
+              ...MessageV2.toModelMessage(
+                msgs.filter((m) => {
+                  if (m.info.role !== "assistant" || m.info.error === undefined) {
+                    return true
+                  }
+                  if (
+                    MessageV2.AbortedError.isInstance(m.info.error) &&
+                    m.parts.some((part) => part.type !== "step-start" && part.type !== "reasoning")
+                  ) {
+                    return true
+                  }
+
+                  return false
+                }),
+              ),
             ],
-          }),
+            tools: model.info.tool_call === false ? undefined : tools,
+            model: wrapLanguageModel({
+              model: model.language,
+              middleware: [
+                {
+                  async transformParams(args) {
+                    if (args.type === "stream") {
+                      // @ts-expect-error
+                      args.params.prompt = ProviderTransform.message(
+                        args.params.prompt,
+                        model.providerID,
+                        model.modelID,
+                      )
+                    }
+                    return args.params
+                  },
+                },
+              ],
+            }),
+          })
+
+        let stream = doStream()
+        const cfg = await Config.get()
+        const maxRetries = cfg.experimental?.chatMaxRetries ?? MAX_RETRIES
+        result = await processor.process(stream, {
+          count: 0,
+          max: maxRetries,
         })
+        if (result.shouldRetry) {
+          for (let retry = 1; retry < maxRetries; retry++) {
+            const lastRetryPart = result.parts.findLast((p): p is MessageV2.RetryPart => p.type === "retry")
 
-      let stream = doStream()
-      const cfg = await Config.get()
-      const maxRetries = cfg.experimental?.chatMaxRetries ?? MAX_RETRIES
-      let result = await processor.process(stream, {
-        count: 0,
-        max: maxRetries,
-      })
-      if (result.shouldRetry) {
-        for (let retry = 1; retry < maxRetries; retry++) {
-          const lastRetryPart = result.parts.findLast((p): p is MessageV2.RetryPart => p.type === "retry")
+            if (lastRetryPart) {
+              const delayMs = SessionRetry.getRetryDelayInMs(lastRetryPart.error, retry)
 
-          if (lastRetryPart) {
-            const delayMs = SessionRetry.getRetryDelayInMs(lastRetryPart.error, retry)
-
-            log.info("retrying with backoff", {
-              attempt: retry,
-              delayMs,
-            })
-
-            const stop = await SessionRetry.sleep(delayMs, abort.signal)
-              .then(() => false)
-              .catch((error) => {
-                let err = error
-                if (error instanceof DOMException && error.name === "AbortError") {
-                  err = new MessageV2.AbortedError(
-                    { message: error.message },
-                    {
-                      cause: error,
-                    },
-                  ).toObject()
-                }
-                result.info.error = err
-                Bus.publish(Session.Event.Error, {
-                  sessionID: result.info.sessionID,
-                  error: result.info.error,
-                })
-                return true
+              log.info("retrying with backoff", {
+                attempt: retry,
+                delayMs,
               })
 
-            if (stop) break
-          }
+              const stop = await SessionRetry.sleep(delayMs, abort.signal)
+                .then(() => false)
+                .catch((error) => {
+                  let err = error
+                  if (error instanceof DOMException && error.name === "AbortError") {
+                    err = new MessageV2.AbortedError(
+                      { message: error.message },
+                      {
+                        cause: error,
+                      },
+                    ).toObject()
+                  }
+                  result.info.error = err
+                  Bus.publish(Session.Event.Error, {
+                    sessionID: result.info.sessionID,
+                    error: result.info.error,
+                  })
+                  return true
+                })
 
-          stream = doStream()
-          result = await processor.process(stream, {
-            count: retry,
-            max: maxRetries,
-          })
-          if (!result.shouldRetry) {
-            break
+              if (stop) break
+            }
+
+            stream = doStream()
+            result = await processor.process(stream, {
+              count: retry,
+              max: maxRetries,
+            })
+            if (!result.shouldRetry) {
+              break
+            }
           }
         }
+        finishReason = await stream.finishReason
       }
       await processor.end()
 
       const queued = state().queued.get(input.sessionID) ?? []
 
       if (!result.blocked && !result.info.error) {
-        if ((await stream.finishReason) === "tool-calls") {
+        if (finishReason === "tool-calls") {
           continue
         }
 

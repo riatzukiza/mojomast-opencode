@@ -9,7 +9,9 @@
     "dev": "bun run --cwd packages/opencode --conditions=browser src/index.ts",
     "typecheck": "bun turbo typecheck",
     "prepare": "husky",
-    "random": "echo 'Random script'"
+    "random": "echo 'Random script'",
+    "perf:macro:message": "bun perf/macro/http-message-send.bench.ts",
+    "perf:macro:sse": "bun perf/macro/sse-events.bench.ts"
   },
   "workspaces": {
     "packages": [
@@ -50,6 +52,7 @@
   },
   "devDependencies": {
     "@tsconfig/bun": "catalog:",
+    "autocannon": "8.0.0",
     "husky": "9.1.7",
     "prettier": "3.6.2",
     "sst": "3.17.23",

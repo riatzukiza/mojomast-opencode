@@ -1,0 +1,10 @@
+{
+  "agent": "build",
+  "system": "You are a benchmarking stub. Respond concisely.",
+  "parts": [
+    {
+      "type": "text",
+      "text": "Summarize the current workspace state."
+    }
+  ]
+}
