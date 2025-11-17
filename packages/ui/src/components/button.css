@@ -4,7 +4,7 @@
   justify-content: center;
   border-style: solid;
   border-width: 1px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   text-decoration: none;
   user-select: none;
   cursor: default;
@@ -50,6 +50,10 @@
     }
     &:focus-visible:active {
       box-shadow: none;
+    }
+    &:active {
+      scale: 0.99;
+      transition: all 150ms ease-out;
     }
 
     [data-slot="icon"] {

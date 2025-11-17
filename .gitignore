@@ -1,11 +1,17 @@
 # Build artifacts
+.DS_Store
 dist/
+dist
 build/
 lib/
+tmp/
+playground
+openapi.json
 *.tsbuildinfo
 
 # Dependencies 
 node_modules/
+node_modules
 *.log
 *.pid
 *.seed
@@ -17,6 +23,8 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+.sst
+.worktrees
 
 # IDE files
 .vscode/
@@ -24,5 +32,9 @@ node_modules/
 *.swp
 *.swo
 *~
+**/.serena
 .serena/
+
+# Tool output
 .turbo/
+refs
