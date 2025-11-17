@@ -1,5 +1,5 @@
 import path from "path"
-import { mkdir, readFile, writeFile } from "fs/promises"
+import { mkdir, readFile, rm, writeFile } from "fs/promises"
 
 export type PerfResult = {
   suite: string
@@ -11,6 +11,10 @@ export type PerfResult = {
 const DEFAULT_BODY = {
   agent: "build",
   system: "Benchmark perf stub",
+  model: {
+    providerID: "perf-stub",
+    modelID: "stub-chat",
+  },
   parts: [
     {
       type: "text",
@@ -23,10 +27,25 @@ const cloneDefaultBody = () => JSON.parse(JSON.stringify(DEFAULT_BODY)) as typeo
 
 const scenarioFile = path.join(process.cwd(), "perf/tools/autocannon/chat-loop.json")
 const perfOut = () => process.env.PERF_OUT ?? path.join("perf", "regression")
+const stubWriteDir = () => process.env.PERF_STUB_WRITE_DIR ?? path.join("perf", ".stub-tmp")
 
 export const ensurePerfEnv = () => {
   process.env.NODE_ENV ??= "production"
   process.env.OPENCODE_PERF_PROVIDER ??= "stub"
+}
+
+export const prepareStubWorkspace = async () => {
+  const rel = stubWriteDir()
+  const dir = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel)
+  await rm(dir, { recursive: true, force: true }).catch(() => {})
+  await mkdir(dir, { recursive: true })
+  return dir
+}
+
+export const cleanupStubWorkspace = async () => {
+  const rel = stubWriteDir()
+  const dir = path.isAbsolute(rel) ? rel : path.join(process.cwd(), rel)
+  await rm(dir, { recursive: true, force: true }).catch(() => {})
 }
 
 export const loadScenarioBody = async () => {

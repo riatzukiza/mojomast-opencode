@@ -1,6 +1,13 @@
 import autocannon, { type Result as AutocannonResult } from "autocannon"
 import { Server } from "@/server/server"
-import { ensurePerfEnv, loadScenarioBody, createSession, writePerfResult } from "./utils"
+import {
+  ensurePerfEnv,
+  loadScenarioBody,
+  createSession,
+  writePerfResult,
+  prepareStubWorkspace,
+  cleanupStubWorkspace,
+} from "./utils"
 
 const asNumber = (value: string | undefined, fallback: number) => {
   const parsed = Number(value)
@@ -14,9 +21,11 @@ const resultFile = "macro-http-message.json"
 
 const main = async () => {
   ensurePerfEnv()
+  await prepareStubWorkspace()
   const server = Server.listen({ port: 0, hostname: "127.0.0.1" })
   try {
     const baseURL = `http://127.0.0.1:${server.port}`
+
     const sessionID = await createSession(baseURL)
     const payload = await loadScenarioBody()
     const body = JSON.stringify(payload)
@@ -38,6 +47,7 @@ const main = async () => {
     console.table(metrics)
   } finally {
     server.stop()
+    await cleanupStubWorkspace().catch(() => {})
   }
 }
 

@@ -1,0 +1,23 @@
+{
+  "suite": "micro",
+  "name": "message-preprocess",
+  "metrics": {
+    "missing_file_scan_hz": 57559.999782004554,
+    "missing_file_scan_avg_ms": 17.909774803008204,
+    "directory_listing_hz": 55012.00296382964,
+    "directory_listing_avg_ms": 18.795575321868206,
+    "large_file_read_text_hz": 49425.42521703187,
+    "large_file_read_text_avg_ms": 24.19723941446995,
+    "large_file_read_bytes_hz": 41426.250796742286,
+    "large_file_read_bytes_avg_ms": 27.52494936012038
+  },
+  "meta": {
+    "node": "v24.3.0",
+    "bun": "1.3.0",
+    "durationMs": 200,
+    "mode": "real",
+    "target": "/home/err/devel",
+    "directory": "/home/err/devel/orgs/sst/opencode",
+    "attachment": "/home/err/devel/orgs/sst/opencode/README.md"
+  }
+}

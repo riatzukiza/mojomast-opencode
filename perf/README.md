@@ -30,6 +30,38 @@ Record Node/Bun version and NODE_ENV for every run.
 - Optional Node flags: --expose-gc, --trace-gc, --inspect
 - Suggested env: PERF_OUT=perf/regression, PERF_DURATION, PERF_CONNECTIONS, PERF_STREAM_MESSAGES, PERF_STREAM_SETTLE_MS
 - Set `OPENCODE_PERF_PROVIDER=stub` (bench scripts do this automatically) for local perf loops; unset to verify real provider behavior sparingly.
+- Start the perf stub provider (`bun perf/tools/stub-server.ts --script perf/tools/scripts/zai-plan.json`)
+  before running macro benches. It exposes an OpenAI-compatible endpoint that
+  streams deterministic chunks, emits a `write_file` tool call targeting
+  `perf/.stub-tmp`, and writes metadata for later analysis.
+
+## Perf Stub Provider
+
+- Provider config lives in `.opencode/opencode.jsonc` under the `perf-stub`
+  entry. The default model is `perf-stub/stub-chat`.
+- Benches clean up `perf/.stub-tmp` automatically, but you can override the
+  destination via `PERF_STUB_WRITE_DIR`.
+- Chunk count/delay are tunable via `PERF_STUB_CHUNKS` and
+  `PERF_STUB_DELAY_MS` (or `--chunks/--delay` CLI flags on the stub server).
+
+### Capture Mode
+
+1. Start the stub server in capture mode pointing at the model you want to
+   record. Example (OpenAI-compatible upstream):
+   ```bash
+   PERF_CAPTURE_API_KEY=sk-... bun perf/tools/stub-server.ts \
+     --mode=capture \
+     --capture perf/tools/scripts/zai-plan.json \
+     --upstream-base=https://api.openai.com
+   ```
+2. Update `.opencode/opencode.jsonc` so that `perf-stub/stub-chat` points to the
+   capture server (`http://127.0.0.1:8787`).
+3. Run opencode (CLI or perf bench) inside a scratch workspace using the
+   `zai-coding-plan/glm-4.6` model. Issue your prompts (`continue` etc.).
+4. When you terminate the capture server it writes the recorded script to the
+   `--capture` path. Replay it later via `--script <file>`.
+5. Tool calls that attempt to write files are automatically redirected into
+   `perf/.stub-tmp` during replay so the real workspace stays clean.
 
 ## CI Guardrail
 
@@ -114,9 +146,14 @@ these seeds when extending coverage.
 
 - Use `perf/macro/chat-loop.bench.ts` to boot the Hono server with the existing
   routing stack. The script accepts `--duration`, `--connections`, and
-  `--session-id` flags, injects an in-memory provider stub, then spawns
-  `autocannon` with the request template stored in
-  `perf/tools/autocannon/chat-loop.json`.
+  `--session-id` flags, injects the perf stub provider, then spawns `autocannon`
+  with the request template stored in `perf/tools/autocannon/chat-loop.json`.
+- `perf/macro/chat-loop-stress.bench.ts` drives `fetch` requests directly to
+  `/session/:id/message`, letting you dial up sessions/messages/concurrency via
+  env vars (`PERF_SESSIONS`, `PERF_MESSAGES`, `PERF_CONCURRENCY`). Set
+  `PERF_SHARED_SESSION=1` to hammer a single session and surface queue pressure.
+  The bench logs latency percentiles + throughput, snapshots `perf/hotspots`
+  metrics, and writes JSON to `perf/regression/macro-chat-loop-stress.json`.
 - Metrics recorded per run:
   - p50/p95/p99 latency (wall clock send→assistant done)
   - queue wait (time spent inside `state().queued` before acquiring the lock)
@@ -137,9 +174,18 @@ doctor`, or `node --inspect`. Wrap via the scripts inside `perf/tools/clinic`.
 - `perf/micro/resolve-tools.bench.ts`: isolates the tool-resolution pipeline in
   `prompt.ts:508-636` using `tinybench`. Compares the current merge/deep clone
   approach against a cached variant.
-- `perf/micro/message-serialization.bench.ts`: exercises
-  `MessageV2.toModelMessage` serialization for long chat histories to track
-  allocations and throughput.
+- `perf/micro/message-serialization.bench.ts`: generates short/medium/long chat
+  histories and measures `MessageV2.toModelMessage` throughput. Results land in
+  `perf/regression/micro-message-serialization.json`. Run via
+  `bun perf/micro/message-serialization.bench.ts` and tweak with `PERF_TIME_MS`.
+- `perf/micro/message-preprocess.bench.ts`: builds a synthetic large directory or
+  targets a real workspace tree (default `/home/err/devel`), then hammers the
+  Read/List-tool style filesystem paths (readdir, attachment loads) with
+  tinybench. Results land in `perf/regression/micro-message-preprocess.json`.
+  Run via `bun perf/micro/message-preprocess.bench.ts` and tune with
+  `PERF_FS_ENTRIES`, `PERF_FS_FILESIZE`, `PERF_TIME_MS`. To benchmark an existing
+  repo, set `PERF_FS_TARGET`/`PERF_FS_DIRECTORY`/`PERF_FS_FILE` (symlinks are
+  respected); use `PERF_FS_MODE=fixture` to force the synthetic tree.
 
 ### 4. Memory / Leak Detection
 

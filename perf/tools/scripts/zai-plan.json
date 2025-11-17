@@ -1,0 +1,61 @@
+{
+  "entries": [
+    {
+      "request": {
+        "body": {
+          "model": "perf-stub/stub-chat",
+          "stream": true,
+          "messages": [
+            {
+              "role": "user",
+              "content": "Draft the initial Collaborative Orbital Robotics Control Platform specification."
+            }
+          ]
+        }
+      },
+      "response": {
+        "type": "text",
+        "text": "# Collaborative Orbital Robotics Control Platform Specification\n\n## 1. Architecture Overview\n\nThe Collaborative Orbital Robotics Control Platform (CORCP) is a distributed system designed to enable real-time coordination and control of multiple orbital robotics assets. The platform follows a microservices architecture with event-driven communication patterns, supporting both autonomous operations and human-in-the-loop control scenarios.\n\n- **Core Architecture**: Event-driven microservices with WebSocket-based real-time communication\n- **Communication Layer**: Apache Kafka for event streaming, WebSocket for real-time control\n- **Data Layer**: Time-series database for telemetry, PostgreSQL for configuration\n- **Security**: JWT-based authentication with role-based access control (RBAC)\n- **Scalability**: Horizontal scaling with Kubernetes orchestration\n\n## 2. Subsystem Breakdown\n\n### 2.1 Robotics Control Service\n- Manages individual robot state and command execution\n- Implements safety interlocks and collision avoidance\n- Provides telemetry aggregation and filtering\n- Supports both autonomous and manual control modes\n\n### 2.2 Mission Planning Service\n- Generates optimal trajectory plans using orbital mechanics\n- Coordinates multi-robot mission sequences\n- Handles constraint validation and conflict resolution\n- Maintains mission state machine and execution tracking\n\n### 2.3 Telemetry Processing Service\n- Ingests high-frequency sensor data from robotics assets\n- Performs real-time data validation and anomaly detection\n- Provides data compression and archival capabilities\n- Supports configurable data retention policies\n\n### 2.4 User Interface Service\n- Web-based control dashboard with real-time visualization\n- Mobile-responsive design for field operations\n- Supports multiple concurrent operator sessions\n- Provides mission replay and analysis tools\n\n### 2.5 Communication Gateway\n- Handles protocol translation between ground and space assets\n- Manages network topology and routing decisions\n- Implements automatic failover and link recovery\n- Provides bandwidth optimization and QoS management\n\n## 3. Service Interfaces\n\n### 3.1 Robotics Control API\n```\nPOST /api/v1/robots/{id}/commands\nGET /api/v1/robots/{id}/status\nGET /api/v1/robots/{id}/telemetry\nWebSocket: /ws/robots/{id}/realtime\n```\n\n### 3.2 Mission Planning API\n```\nPOST /api/v1/missions\nGET /api/v1/missions/{id}/plan\nPUT /api/v1/missions/{id}/status\nWebSocket: /ws/missions/{id}/updates\n```\n\n### 3.3 Telemetry API\n```\nPOST /api/v1/telemetry/ingest\nGET /api/v1/telemetry/query\nGET /api/v1/telemetry/aggregates\nWebSocket: /ws/telemetry/stream\n```\n\n## 4. Data Contracts\n\n### 4.1 Robot State Schema\n```json\n{\n  \"robotId\": \"string\",\n  \"timestamp\": \"ISO8601\",\n  \"position\": {\"x\": \"number\", \"y\": \"number\", \"z\": \"number\"},\n  \"velocity\": {\"x\": \"number\", \"y\": \"number\", \"z\": \"number\"},\n  \"orientation\": {\"quaternion\": \"number[4]\"},\n  \"batteryLevel\": \"number\",\n  \"systemHealth\": \"object\",\n  \"activeCommands\": \"array\"\n}\n```\n\n### 4.2 Mission Plan Schema\n```json\n{\n  \"missionId\": \"string\",\n  \"robots\": \"array<string>\",\n  \"waypoints\": \"array<position>\",\n  \"constraints\": \"object\",\n  \"timeline\": \"array<timestamped_events>\",\n  \"contingencyPlans\": \"array<object>\"\n}\n```\n\n### 4.3 Telemetry Event Schema\n```json\n{\n  \"eventId\": \"string\",\n  \"robotId\": \"string\",\n  \"timestamp\": \"ISO8601\",\n  \"sensorType\": \"string\",\n  \"measurements\": \"object\",\n  \"quality\": \"number\",\n  \"metadata\": \"object\"\n}\n```\n\n## 5. Deployment Topology\n\n### 5.1 Kubernetes Clusters\n- **Primary Cluster**: Ground control infrastructure (us-east-1)\n- **Edge Clusters**: Regional ground stations (3-5 locations)\n- **Hybrid Cloud**: On-premises for sensitive operations\n\n### 5.2 Service Distribution\n- Control services: 3 replicas with anti-affinity rules\n- Database: PostgreSQL with read replicas, TimescaleDB for telemetry\n- Message broker: Kafka cluster with 3 brokers\n- Ingress: NGINX with SSL termination\n\n### 5.3 Network Architecture\n- VPN tunnels between ground stations\n- Satellite uplink redundancy with automatic failover\n- QoS prioritization for control traffic\n- Network segmentation for security zones\n\n## 6. Testing and Observability\n\n### 6.1 Testing Strategy\n- **Unit Tests**: 90%+ coverage for business logic\n- **Integration Tests**: API contract validation with test containers\n- **End-to-End Tests**: Mission simulation with hardware-in-the-loop\n- **Load Tests**: 10x expected traffic with k6\n- **Chaos Tests**: Network partition and node failure scenarios\n\n### 6.2 Monitoring Stack\n- **Metrics**: Prometheus with Grafana dashboards\n- **Logging**: ELK stack with structured JSON logs\n- **Tracing**: Jaeger for distributed request tracking\n- **Alerting**: AlertManager with PagerDuty integration\n\n### 6.3 Key Performance Indicators\n- Command latency: <100ms (95th percentile)\n- Telemetry processing: >10,000 events/second\n- System availability: 99.9% uptime\n- Mission success rate: >95%\n\n## 7. Follow-up Tasks\n\n1. **Phase 1**: Implement core robotics control service with basic telemetry\n2. **Phase 2**: Develop mission planning algorithms and trajectory optimization\n3. **Phase 3**: Build web-based control interface with real-time visualization\n4. **Phase 4**: Integrate communication gateway and protocol adapters\n5. **Phase 5**: Deploy to staging environment and conduct integration testing\n6. **Phase 6**: Production deployment with gradual rollout and monitoring\n7. **Phase 7**: Performance optimization and scalability testing\n8. **Phase 8**: Security audit and compliance validation\n",
+        "label": "spec-part-1"
+      }
+    },
+    {
+      "request": {
+        "body": {
+          "model": "perf-stub/stub-chat",
+          "stream": true,
+          "messages": [
+            {
+              "role": "user",
+              "content": "continue"
+            }
+          ]
+        }
+      },
+      "response": {
+        "type": "text",
+        "text": "## 8. Fault Tolerance & Resilience\n\n8.1 System Redundancy\n- Primary/backup satellite communication channels\n- Dual power system architecture with automatic failover\n- Redundant flight control computers with hot-swappable modules\n\n8.2 Error Recovery\n- Automatic anomaly detection and isolation\n- Graceful degradation modes for critical systems\n- Rollback mechanisms for software updates\n\n8.3 Network Resilience\n- Mesh networking topology for communication redundancy\n- Adaptive bandwidth allocation during signal degradation\n- Store-and-forward messaging for intermittent connectivity\n\n## 9. AI-Assisted Decision Support\n\n9.1 Predictive Analytics\n- Machine learning models for trajectory optimization\n- Predictive maintenance scheduling based on sensor data\n- Collision risk assessment with confidence scoring\n\n9.2 Real-time Assistance\n- Natural language interface for operator queries\n- Automated recommendation engine for maneuver planning\n- Context-aware alert prioritization\n\n9.3 Learning Systems\n- Continuous model improvement from operational data\n- Transfer learning between mission scenarios\n- Explainable AI for critical decision transparency\n\n## 10. Data Lifecycle Management\n\n10.1 Data Collection\n- Multi-sensor data fusion with timestamp synchronization\n- Configurable sampling rates based on mission phase\n- Edge processing for bandwidth optimization\n\n10.2 Storage & Archival\n- Hierarchical storage with automatic tiering\n- Immutable audit trails for compliance\n- Compression algorithms for long-term retention\n\n10.3 Data Governance\n- Role-based access control with MFA\n- Automated data classification and tagging\n- Retention policy enforcement\n\n## 11. Compliance & Safety\n\n11.1 Regulatory Framework\n- ITU coordination compliance for spectrum usage\n- National space agency certification requirements\n- International debris mitigation guidelines\n\n11.2 Safety Protocols\n- Automated collision avoidance with manual override\n- Emergency shutdown procedures\n- Radiation shielding monitoring\n\n11.3 Audit & Reporting\n- Real-time compliance monitoring dashboards\n- Automated incident reporting to regulatory bodies\n- Periodic safety assessment documentation\n",
+        "label": "spec-part-2"
+      }
+    },
+    {
+      "request": {
+        "body": {
+          "model": "perf-stub/stub-chat",
+          "stream": true,
+          "messages": [
+            {
+              "role": "user",
+              "content": "continue"
+            }
+          ]
+        }
+      },
+      "response": {
+        "type": "text",
+        "text": "## 12. Implementation Roadmap\n\n**Phase 1: Foundation (Months 1-3)**\n- Core infrastructure setup and authentication system\n- Basic satellite telemetry integration\n- Risk mitigation: Use existing satellite APIs, parallel development tracks\n\n**Phase 2: Collaboration (Months 4-6)**\n- Real-time communication and conflict resolution\n- Command queue management\n- Milestone: Multi-operator basic coordination\n\n**Phase 3: Intelligence (Months 7-9)**\n- AI-powered trajectory optimization\n- Predictive maintenance algorithms\n- Resource needs: ML engineers, satellite operations experts\n\n**Phase 4: Advanced Features (Months 10-12)**\n- Advanced simulation environment\n- Full automation capabilities\n- Risk mitigation: Incremental testing, backup manual controls\n\n## 13. Follow-up Initiatives\n\n**Short-term (Post-launch)**\n- Mobile command center applications\n- Extended satellite constellation support\n- Performance optimization based on operational data\n\n**Long-term (Year 2+)**\n- Integration with space debris monitoring systems\n- Autonomous swarm robotics coordination\n- Commercial licensing for private space companies\n- Academic research partnerships for advanced algorithms\n\n**Resource Requirements**\n- Dedicated satellite operations team\n- 24/7 monitoring infrastructure\n- Regular security audits and penetration testing\n- Continuous training programs for operators\n",
+        "label": "spec-part-3"
+      }
+    }
+  ]
+}

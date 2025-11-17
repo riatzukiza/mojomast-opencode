@@ -1,5 +1,12 @@
 import { Server } from "@/server/server"
-import { ensurePerfEnv, loadScenarioBody, createSession, writePerfResult } from "./utils"
+import {
+  ensurePerfEnv,
+  loadScenarioBody,
+  createSession,
+  writePerfResult,
+  prepareStubWorkspace,
+  cleanupStubWorkspace,
+} from "./utils"
 
 const asNumber = (value: string | undefined, fallback: number) => {
   const parsed = Number(value)
@@ -29,6 +36,7 @@ type SSEPayload = {
 
 const main = async () => {
   ensurePerfEnv()
+  await prepareStubWorkspace()
   const server = Server.listen({ port: 0, hostname: "127.0.0.1" })
   try {
     const baseURL = `http://127.0.0.1:${server.port}`
@@ -70,6 +78,7 @@ const main = async () => {
     console.table(metrics)
   } finally {
     server.stop()
+    await cleanupStubWorkspace().catch(() => {})
   }
 }
 

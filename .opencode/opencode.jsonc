@@ -7,5 +7,40 @@
         // "baseURL": "http://localhost:8080",
       },
     },
+    "perf-stub": {
+      "name": "Perf Stub",
+      "id": "perf-stub",
+      "env": [],
+      "npm": "@ai-sdk/openai",
+      "models": {
+        "stub-chat": {
+          "id": "stub-chat",
+          "name": "Perf Stub Chat",
+          "release_date": "2025-01-01",
+          "attachment": false,
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0,
+          },
+          "limit": {
+            "context": 32000,
+            "output": 4096,
+          },
+          "modalities": {
+            "input": ["text"],
+            "output": ["text"],
+          },
+          "options": {
+            "baseURL": "http://127.0.0.1:8787/v1",
+            "apiKey": "stub-key",
+          },
+        },
+      },
+    },
   },
 }

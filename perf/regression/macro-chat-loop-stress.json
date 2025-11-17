@@ -1,0 +1,26 @@
+{
+  "suite": "macro",
+  "name": "chat-loop-stress",
+  "metrics": {
+    "avgMs": 35981.197314,
+    "p50Ms": 35981.197314,
+    "p95Ms": 35981.197314,
+    "p99Ms": 35981.197314,
+    "maxMs": 35981.197314,
+    "successes": 1,
+    "errors": 0,
+    "throughput": 0.027791543364607117,
+    "totalMessages": 1
+  },
+  "meta": {
+    "node": "v24.3.0",
+    "bun": "1.3.0",
+    "sessions": 1,
+    "messagesPerSession": 1,
+    "concurrency": 1,
+    "sharedSession": 1,
+    "totalDurationMs": 35982,
+    "hotspotsEnabled": 1,
+    "hotspots": "{\"macro.chat_loop_stress.message\":{\"count\":1,\"totalMs\":35981.391505,\"maxMs\":35981.391505}}"
+  }
+}

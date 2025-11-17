@@ -11,7 +11,9 @@
     "prepare": "husky",
     "random": "echo 'Random script'",
     "perf:macro:message": "bun perf/macro/http-message-send.bench.ts",
-    "perf:macro:sse": "bun perf/macro/sse-events.bench.ts"
+    "perf:macro:sse": "bun perf/macro/sse-events.bench.ts",
+    "perf:macro:stress": "bun perf/macro/chat-loop-stress.bench.ts",
+    "perf:stub": "bun perf/tools/stub-server.ts"
   },
   "workspaces": {
     "packages": [
@@ -56,6 +58,7 @@
     "husky": "9.1.7",
     "prettier": "3.6.2",
     "sst": "3.17.23",
+    "tinybench": "5.1.0",
     "turbo": "2.5.6"
   },
   "dependencies": {

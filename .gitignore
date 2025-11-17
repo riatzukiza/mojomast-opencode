@@ -38,3 +38,4 @@ node_modules
 # Tool output
 .turbo/
 refs
+perf/.stub-tmp/

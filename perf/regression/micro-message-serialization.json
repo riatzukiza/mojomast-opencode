@@ -1,0 +1,18 @@
+{
+  "suite": "micro",
+  "name": "message-serialization",
+  "metrics": {
+    "short_hz": 363955.83742924,
+    "short_avg_ms": 3.2314591546561924,
+    "medium_hz": 67842.86555180138,
+    "medium_avg_ms": 17.10771251389913,
+    "long_files_hz": 22277.814929676173,
+    "long_files_avg_ms": 51.87647251037361
+  },
+  "meta": {
+    "node": "v24.3.0",
+    "bun": "1.3.0",
+    "durationMs": 200,
+    "scenarios": "[{\"name\":\"short\",\"messages\":16,\"summary\":\"8 messages, short user prompts\"},{\"name\":\"medium\",\"messages\":80,\"summary\":\"40 messages, mid text, occasional reasoning\"},{\"name\":\"long_files\",\"messages\":240,\"summary\":\"120 messages, long text with frequent file parts\"}]"
+  }
+}
