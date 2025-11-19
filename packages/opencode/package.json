@@ -1,9 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.0.68",
-  "name": "opencode",
+  "name": "@openhax/opencode",
   "type": "module",
-  "private": true,
+  "private": false,
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test",
@@ -13,6 +13,9 @@
   },
   "bin": {
     "opencode": "./bin/opencode"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "exports": {
     "./*": "./src/*.ts"

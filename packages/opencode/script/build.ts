@@ -17,6 +17,7 @@ process.chdir(dir)
 import pkg from "../package.json"
 import { Script } from "@opencode-ai/script"
 
+const baseName = pkg.name.includes("/") ? pkg.name.split("/").pop()! : pkg.name
 const singleFlag = process.argv.includes("--single")
 
 const allTargets: {
@@ -89,7 +90,7 @@ await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentu
 await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 for (const item of targets) {
   const name = [
-    pkg.name,
+    baseName,
     // changing to win32 flags npm for some reason
     item.os === "win32" ? "windows" : item.os,
     item.arch,
@@ -110,9 +111,9 @@ for (const item of targets) {
     plugins: [solidPlugin],
     sourcemap: "external",
     compile: {
-      target: name.replace(pkg.name, "bun") as any,
-      outfile: `dist/${name}/bin/opencode`,
-      execArgv: [`--user-agent=opencode/${Script.version}`, `--env-file=""`, `--`],
+      target: name.replace(baseName, "bun") as any,
+      outfile: `dist/${name}/bin/${baseName}`,
+      execArgv: [`--user-agent=${baseName}/${Script.version}`, `--env-file=""`, `--`],
       windows: {},
     },
     entrypoints: ["./src/index.ts", parserWorker, workerPath],
