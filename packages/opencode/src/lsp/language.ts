@@ -75,6 +75,8 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   ".rkt": "racket",
   ".rktd": "racket",
   ".rktl": "racket",
+  ".scm": "scheme",
+  ".ss": "scheme",
   ".cshtml": "razor",
   ".razor": "razor",
   ".rb": "ruby",
