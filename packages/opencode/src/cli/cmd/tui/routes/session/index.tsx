@@ -114,6 +114,16 @@ const FENCE_ALIASES: Record<string, string> = {
   cljc: "clojure",
   cljx: "clojure",
   edn: "clojure",
+  lisp: "commonlisp",
+  commonlisp: "commonlisp",
+  "common-lisp": "commonlisp",
+  common_lisp: "commonlisp",
+  rkt: "racket",
+  el: "elisp",
+  elisp: "elisp",
+  "emacs-lisp": "elisp",
+  emacs_lisp: "elisp",
+  emacslisp: "elisp",
 }
 
 function normalizeFenceLanguage(input: string) {
@@ -1392,12 +1402,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
         <Switch>
           <Match when={Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={content()}
-              conceal={ctx.conceal()}
-            />
+            <markdown syntaxStyle={syntax()} streaming={true} content={content()} conceal={ctx.conceal()} />
           </Match>
           <Match when={!Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
             <code
