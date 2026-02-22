@@ -8,6 +8,9 @@ const elisp = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-elisp.
 const clojureHighlightsOverride = fileURLToPath(
   new URL("./src/cli/cmd/tui/assets/clojure-highlights-override.scm", import.meta.url),
 )
+const commonlispHighlightsOverride = fileURLToPath(
+  new URL("./src/cli/cmd/tui/assets/commonlisp-highlights-override.scm", import.meta.url),
+)
 
 export default {
   // NOTE: FOR markdown, javascript and typescript, we use the opentui built-in parsers
@@ -242,6 +245,7 @@ export default {
       queries: {
         highlights: [
           "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/commonlisp/highlights.scm",
+          commonlispHighlightsOverride,
         ],
         locals: [
           "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/commonlisp/locals.scm",

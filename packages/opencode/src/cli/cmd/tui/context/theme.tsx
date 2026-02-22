@@ -743,6 +743,10 @@ function getSyntaxRules(theme: Theme) {
         "keyword.clojure.form.call",
         "keyword.clojure.definition",
         "keyword.clojure.definition.call",
+        "keyword.commonlisp.form",
+        "keyword.commonlisp.form.call",
+        "keyword.commonlisp.definition",
+        "keyword.commonlisp.definition.call",
       ],
       style: {
         foreground: theme.syntaxKeyword,
@@ -781,7 +785,12 @@ function getSyntaxRules(theme: Theme) {
       },
     },
     {
-      scope: ["function.call.clojure.default", "variable.parameter.clojure.default"],
+      scope: [
+        "function.call.clojure.default",
+        "variable.parameter.clojure.default",
+        "function.call.commonlisp.default",
+        "variable.parameter.commonlisp.default",
+      ],
       style: {
         foreground: theme.text,
       },
@@ -796,6 +805,24 @@ function getSyntaxRules(theme: Theme) {
       scope: ["module.clojure.namespace"],
       style: {
         foreground: theme.syntaxType,
+      },
+    },
+    {
+      scope: ["function.commonlisp.definition", "function.commonlisp.generic"],
+      style: {
+        foreground: theme.success,
+      },
+    },
+    {
+      scope: ["type.commonlisp.class", "type.commonlisp.alias", "module.commonlisp.package"],
+      style: {
+        foreground: theme.syntaxType,
+      },
+    },
+    {
+      scope: ["keyword.commonlisp.keyword"],
+      style: {
+        foreground: theme.error,
       },
     },
     {
@@ -998,9 +1025,7 @@ function getSyntaxRules(theme: Theme) {
     },
     {
       scope: ["spell", "nospell"],
-      style: {
-        foreground: theme.text,
-      },
+      style: {},
     },
     {
       scope: ["conceal"],
