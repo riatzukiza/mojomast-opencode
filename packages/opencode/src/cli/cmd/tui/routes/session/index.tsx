@@ -109,6 +109,32 @@ function use() {
   return ctx
 }
 
+const FENCE_ALIASES: Record<string, string> = {
+  clj: "clojure",
+  cljs: "clojure",
+  cljc: "clojure",
+  cljx: "clojure",
+  edn: "clojure",
+  lisp: "commonlisp",
+  commonlisp: "commonlisp",
+  "common-lisp": "commonlisp",
+  common_lisp: "commonlisp",
+  rkt: "racket",
+  el: "elisp",
+  elisp: "elisp",
+  "emacs-lisp": "elisp",
+  emacs_lisp: "elisp",
+  emacslisp: "elisp",
+}
+
+function normalizeFenceLanguage(input: string) {
+  return input.replace(/^(\s*`{3,}\s*)([^\s`]+)([^\r\n]*)$/gm, (match, prefix, language, suffix) => {
+    const normalized = FENCE_ALIASES[language.toLowerCase()]
+    if (!normalized) return match
+    return `${prefix}${normalized}${suffix}`
+  })
+}
+
 export function Session() {
   const route = useRouteData("session")
   const { navigate } = useRoute()
@@ -1360,7 +1386,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
   const content = createMemo(() => {
     // Filter out redacted reasoning chunks from OpenRouter
     // OpenRouter sends encrypted reasoning data that appears as [REDACTED]
-    return props.part.text.replace("[REDACTED]", "").trim()
+    return normalizeFenceLanguage(props.part.text.replace("[REDACTED]", "")).trim()
   })
   return (
     <Show when={content() && ctx.showThinking()}>
@@ -1390,17 +1416,13 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  const content = createMemo(() => normalizeFenceLanguage(props.part.text).trim())
   return (
-    <Show when={props.part.text.trim()}>
+    <Show when={content()}>
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
         <Switch>
           <Match when={Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
-            <markdown
-              syntaxStyle={syntax()}
-              streaming={true}
-              content={props.part.text.trim()}
-              conceal={ctx.conceal()}
-            />
+            <markdown syntaxStyle={syntax()} streaming={true} content={content()} conceal={ctx.conceal()} />
           </Match>
           <Match when={!Flag.OPENCODE_EXPERIMENTAL_MARKDOWN}>
             <code
@@ -1408,7 +1430,7 @@ function TextPart(props: { last: boolean; part: TextPart; message: AssistantMess
               drawUnstyledText={false}
               streaming={true}
               syntaxStyle={syntax()}
-              content={props.part.text.trim()}
+              content={content()}
               conceal={ctx.conceal()}
               fg={theme.text}
             />
