@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url"
 const clojure = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-clojure.wasm", import.meta.url))
 const commonlisp = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-commonlisp.wasm", import.meta.url))
 const racket = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-racket.wasm", import.meta.url))
+const scheme = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-scheme.wasm", import.meta.url))
 const elisp = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-elisp.wasm", import.meta.url))
 const clojureHighlightsOverride = fileURLToPath(
   new URL("./src/cli/cmd/tui/assets/clojure-highlights-override.scm", import.meta.url),
@@ -256,6 +257,15 @@ export default {
         ],
         locals: [
           "https://raw.githubusercontent.com/6cdh/tree-sitter-racket/56b57807f86aa4ddb14892572b318edd4bc90ebe/queries/locals.scm",
+        ],
+      },
+    },
+    {
+      filetype: "scheme",
+      wasm: scheme,
+      queries: {
+        highlights: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/scheme/highlights.scm",
         ],
       },
     },
