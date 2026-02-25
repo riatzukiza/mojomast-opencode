@@ -656,7 +656,7 @@ test("cleanup returns immediately when snapshot repo is busy", async () => {
       const before = await Snapshot.track()
       expect(before).toBeTruthy()
 
-      const busyFiles = Array.from({ length: 160 }, (_, i) => `${tmp.path}/busy-${i}.txt`)
+      const busyFiles = Array.from({ length: 90 }, (_, i) => `${tmp.path}/busy-${i}.txt`)
       const revertPromise = Snapshot.revert([
         {
           hash: before!,
@@ -775,6 +775,73 @@ test("cleanup skips gc when loose object count is low", async () => {
       
       await Snapshot.cleanup()
       // Pass if no error/hang
+    },
+  })
+})
+
+test("high-contention snapshot churn leaves no git index lock", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const before = await Snapshot.track()
+      expect(before).toBeTruthy()
+
+      await Promise.all(Array.from({ length: 24 }, (_, i) => Filesystem.write(`${tmp.path}/stress-${i}.txt`, `stress-${i}`)))
+
+      await Promise.all(
+        Array.from({ length: 12 }, (_, i) =>
+          Promise.all([
+            Snapshot.track(),
+            Snapshot.patch(before!),
+            Snapshot.diff(before!),
+            i % 2 === 0 ? Snapshot.cleanup() : Promise.resolve(),
+          ]),
+        ),
+      )
+
+      const git = path.join(Global.Path.data, "snapshot", Instance.project.id)
+      const lock = await fs
+        .access(path.join(git, "index.lock"))
+        .then(() => true)
+        .catch(() => false)
+      expect(lock).toBe(false)
+
+      const after = await Snapshot.track()
+      expect(after).toBeTruthy()
+    },
+  })
+})
+
+test("cleanup storm remains non-blocking while snapshot lock is held", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const before = await Snapshot.track()
+      expect(before).toBeTruthy()
+
+      const busyFiles = Array.from({ length: 90 }, (_, i) => `${tmp.path}/busy-storm-${i}.txt`)
+      const revertPromise = Snapshot.revert([
+        {
+          hash: before!,
+          files: busyFiles,
+        },
+      ])
+
+      const stillRunning = await Promise.race([
+        revertPromise.then(() => false),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 30)),
+      ])
+      expect(stillRunning).toBe(true)
+
+      const cleanupResult = await Promise.race([
+        Promise.all(Array.from({ length: 8 }, () => Snapshot.cleanup())).then(() => "cleanup" as const),
+        new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 1000)),
+      ])
+      expect(cleanupResult).toBe("cleanup")
+
+      await revertPromise
     },
   })
 })
