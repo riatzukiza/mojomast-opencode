@@ -14,7 +14,7 @@ export namespace Snapshot {
   const log = Log.create({ service: "snapshot" })
   const hour = 60 * 60 * 1000
   const prune = "7.days"
-  const treehash = /^[0-9a-f]{40}$/
+  const treehash = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
   const retry = [0, 25, 100]
   type Gate = {
     held: boolean
