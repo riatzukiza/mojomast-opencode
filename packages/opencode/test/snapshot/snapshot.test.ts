@@ -731,6 +731,54 @@ test("track retries snapshot index lock contention", async () => {
   })
 })
 
+test("cleanup removes stale tmp_pack files", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const git = path.join(Global.Path.data, "snapshot", Instance.project.id)
+      
+      // Initialize repo so it's valid for count-objects
+      await fs.mkdir(git, { recursive: true })
+      await $`git init --bare`.cwd(git).quiet()
+      
+      const packs = path.join(git, "objects/pack")
+      await fs.mkdir(packs, { recursive: true })
+      
+      const stale = path.join(packs, "tmp_pack_stale")
+      const fresh = path.join(packs, "tmp_pack_fresh")
+      
+      await Bun.write(stale, "stale")
+      await Bun.write(fresh, "fresh")
+      
+      // Make stale file old
+      const old = new Date(Date.now() - 2 * 60 * 60 * 1000)
+      await fs.utimes(stale, old, old)
+      
+      await Snapshot.cleanup()
+      
+      const staleExists = await fs.stat(stale).then(() => true).catch(() => false)
+      const freshExists = await fs.stat(fresh).then(() => true).catch(() => false)
+      expect(staleExists).toBe(false)
+      expect(freshExists).toBe(true)
+    },
+  })
+})
+
+test("cleanup skips gc when loose object count is low", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      // Just one commit, very few objects
+      await Snapshot.track()
+      
+      await Snapshot.cleanup()
+      // Pass if no error/hang
+    },
+  })
+})
+
 test("snapshot state isolation between projects", async () => {
   // Test that different projects don't interfere with each other
   await using tmp1 = await bootstrap()

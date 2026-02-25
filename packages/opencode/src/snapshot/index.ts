@@ -100,19 +100,34 @@ export namespace Snapshot {
       .then(() => true)
       .catch(() => false)
     if (!exists) return
-    const result = await $`git --git-dir ${git} --work-tree ${Instance.worktree} gc --prune=${prune}`
-      .quiet()
-      .cwd(Instance.directory)
-      .nothrow()
-    if (result.exitCode !== 0) {
-      log.warn("cleanup failed", {
-        exitCode: result.exitCode,
-        stderr: result.stderr.toString(),
-        stdout: result.stdout.toString(),
-      })
-      return
+
+    // Clean stale tmp_pack files (older than 1 hour)
+    const packs = path.join(git, "objects/pack")
+    try {
+      const files = await fs.readdir(packs)
+      const now = Date.now()
+      for (const file of files) {
+        if (!file.startsWith("tmp_pack_")) continue
+        const stat = await fs.stat(path.join(packs, file))
+        if (now - stat.mtimeMs > hour) {
+          await fs.unlink(path.join(packs, file)).catch(() => {})
+        }
+      }
+    } catch {}
+
+    const count = await $`git --git-dir ${git} count-objects -v`.quiet().text()
+    const loose = parseInt(count.match(/count: (\d+)/)?.[1] ?? "0")
+    if (loose < 100) return
+
+    await $`git --git-dir ${git} gc --auto`.quiet().nothrow()
+
+    // If still too many loose objects or packs, prune
+    const after = await $`git --git-dir ${git} count-objects -v`.quiet().text()
+    const packsCount = parseInt(after.match(/packs: (\d+)/)?.[1] ?? "0")
+    if (packsCount > 50) {
+      await $`git --git-dir ${git} gc --prune=${prune}`.quiet().nothrow()
+      log.info("cleanup", { prune })
     }
-    log.info("cleanup", { prune })
   }
 
   export async function track() {
@@ -135,6 +150,8 @@ export namespace Snapshot {
       await $`git --git-dir ${git} config core.longpaths true`.quiet().nothrow()
       await $`git --git-dir ${git} config core.symlinks true`.quiet().nothrow()
       await $`git --git-dir ${git} config core.fsmonitor false`.quiet().nothrow()
+      await $`git --git-dir ${git} config gc.auto 0`.quiet().nothrow()
+      await $`git --git-dir ${git} config maintenance.auto false`.quiet().nothrow()
       log.info("initialized")
     }
     const staged = await add(git)
