@@ -119,14 +119,15 @@ export namespace Snapshot {
     const loose = parseInt(count.match(/count: (\d+)/)?.[1] ?? "0")
     if (loose < 100) return
 
-    await $`git --git-dir ${git} gc --auto`.quiet().nothrow()
+    await $`git --git-dir ${git} repack -d -l`.quiet().nothrow()
 
     // If still too many loose objects or packs, prune
     const after = await $`git --git-dir ${git} count-objects -v`.quiet().text()
+    const looseAfter = parseInt(after.match(/count: (\d+)/)?.[1] ?? "0")
     const packsCount = parseInt(after.match(/packs: (\d+)/)?.[1] ?? "0")
-    if (packsCount > 50) {
+    if (looseAfter > 100 || packsCount > 50) {
       await $`git --git-dir ${git} gc --prune=${prune}`.quiet().nothrow()
-      log.info("cleanup", { prune })
+      log.info("cleanup", { prune, loose: looseAfter, packs: packsCount })
     }
   }
 
