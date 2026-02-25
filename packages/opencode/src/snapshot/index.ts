@@ -13,6 +13,59 @@ export namespace Snapshot {
   const log = Log.create({ service: "snapshot" })
   const hour = 60 * 60 * 1000
   const prune = "7.days"
+  type Gate = {
+    held: boolean
+    wait: (() => void)[]
+  }
+  const gate = new Map<string, Gate>()
+
+  function item(git: string) {
+    const existing = gate.get(git)
+    if (existing) return existing
+    const fresh: Gate = {
+      held: false,
+      wait: [],
+    }
+    gate.set(git, fresh)
+    return fresh
+  }
+
+  function unlock(git: string, lock: Gate) {
+    const next = lock.wait.shift()
+    if (next) {
+      next()
+      return
+    }
+    lock.held = false
+    if (!lock.held && lock.wait.length === 0) gate.delete(git)
+  }
+
+  function token(git: string, lock: Gate): Disposable {
+    return {
+      [Symbol.dispose]: () => unlock(git, lock),
+    }
+  }
+
+  function tryLock(git: string) {
+    const lock = item(git)
+    if (lock.held) return
+    lock.held = true
+    return token(git, lock)
+  }
+
+  async function lock(git: string): Promise<Disposable> {
+    const entry = item(git)
+    if (!entry.held) {
+      entry.held = true
+      return token(git, entry)
+    }
+    return new Promise((resolve) => {
+      entry.wait.push(() => {
+        entry.held = true
+        resolve(token(git, entry))
+      })
+    })
+  }
 
   export function init() {
     Scheduler.register({
@@ -28,6 +81,17 @@ export namespace Snapshot {
     const cfg = await Config.get()
     if (cfg.snapshot === false) return
     const git = gitdir()
+    const permit = tryLock(git)
+    if (!permit) {
+      log.info("cleanup skipped", { git, reason: "busy" })
+      // Retry up to 3 times with jittered backoff if blocked
+      const backoff = Math.floor(Math.random() * 500) + 100
+      setTimeout(() => {
+        void cleanup()
+      }, backoff)
+      return
+    }
+    using _ = permit
     const exists = await fs
       .stat(git)
       .then(() => true)
@@ -53,6 +117,7 @@ export namespace Snapshot {
     const cfg = await Config.get()
     if (cfg.snapshot === false) return
     const git = gitdir()
+    using _ = await lock(git)
     if (await fs.mkdir(git, { recursive: true })) {
       await $`git init`
         .env({
@@ -87,6 +152,7 @@ export namespace Snapshot {
 
   export async function patch(hash: string): Promise<Patch> {
     const git = gitdir()
+    using _ = await lock(git)
     await add(git)
     const result =
       await $`git -c core.autocrlf=false -c core.longpaths=true -c core.symlinks=true -c core.quotepath=false --git-dir ${git} --work-tree ${Instance.worktree} diff --no-ext-diff --name-only ${hash} -- .`
@@ -115,6 +181,7 @@ export namespace Snapshot {
   export async function restore(snapshot: string) {
     log.info("restore", { commit: snapshot })
     const git = gitdir()
+    using _ = await lock(git)
     const result =
       await $`git -c core.longpaths=true -c core.symlinks=true --git-dir ${git} --work-tree ${Instance.worktree} read-tree ${snapshot} && git -c core.longpaths=true -c core.symlinks=true --git-dir ${git} --work-tree ${Instance.worktree} checkout-index -a -f`
         .quiet()
@@ -134,6 +201,7 @@ export namespace Snapshot {
   export async function revert(patches: Patch[]) {
     const files = new Set<string>()
     const git = gitdir()
+    using _ = await lock(git)
     for (const item of patches) {
       for (const file of item.files) {
         if (files.has(file)) continue
@@ -166,6 +234,7 @@ export namespace Snapshot {
 
   export async function diff(hash: string) {
     const git = gitdir()
+    using _ = await lock(git)
     await add(git)
     const result =
       await $`git -c core.autocrlf=false -c core.longpaths=true -c core.symlinks=true -c core.quotepath=false --git-dir ${git} --work-tree ${Instance.worktree} diff --no-ext-diff ${hash} -- .`
@@ -201,6 +270,7 @@ export namespace Snapshot {
   export type FileDiff = z.infer<typeof FileDiff>
   export async function diffFull(from: string, to: string): Promise<FileDiff[]> {
     const git = gitdir()
+    using _ = await lock(git)
     const result: FileDiff[] = []
     const status = new Map<string, "added" | "deleted" | "modified">()
 
