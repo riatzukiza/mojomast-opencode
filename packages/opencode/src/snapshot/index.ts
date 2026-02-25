@@ -398,7 +398,7 @@ export namespace Snapshot {
     const text = input.toLowerCase()
     if (text.includes("index.lock")) return true
     if (text.includes("another git process seems to be running")) return true
-    if (text.includes("unable to create")) return true
+    if (text.includes("unable to create") && text.includes("index.lock")) return true
     return false
   }
 

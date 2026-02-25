@@ -693,10 +693,12 @@ test("track returns undefined when snapshot index lock blocks staging", async ()
       const lock = path.join(git, "index.lock")
       await Bun.write(lock, "")
 
-      const next = await Snapshot.track()
-      expect(next).toBeUndefined()
-
-      await fs.unlink(lock)
+      try {
+        const next = await Snapshot.track()
+        expect(next).toBeUndefined()
+      } finally {
+        await fs.unlink(lock).catch(() => {})
+      }
     },
   })
 })
@@ -713,15 +715,18 @@ test("track retries snapshot index lock contention", async () => {
       const lock = path.join(git, "index.lock")
       await Bun.write(lock, "")
 
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         void fs.unlink(lock).catch(() => {})
-      }, 40)
+      }, 60)
 
-      await Filesystem.write(`${tmp.path}/retry.txt`, "retry")
-      const next = await Snapshot.track()
-      expect(next).toBeTruthy()
-
-      await fs.unlink(lock).catch(() => {})
+      try {
+        await Filesystem.write(`${tmp.path}/retry.txt`, "retry")
+        const next = await Snapshot.track()
+        expect(next).toBeTruthy()
+      } finally {
+        clearTimeout(timer)
+        await fs.unlink(lock).catch(() => {})
+      }
     },
   })
 })
