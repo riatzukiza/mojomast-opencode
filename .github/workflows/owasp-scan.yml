@@ -60,6 +60,7 @@ jobs:
           args: --enableExperimental
 
       - name: Upload reports
+        if: ${{ env.ACTIONS_RUNTIME_TOKEN != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: owasp-depcheck-report
