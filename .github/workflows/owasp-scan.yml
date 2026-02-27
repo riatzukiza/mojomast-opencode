@@ -1,4 +1,4 @@
-name: owasp-dependency-check
+name: dependency-security
 on:
   pull_request:
   release:
@@ -7,10 +7,25 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
-  depcheck:
+  bun-audit:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Run Bun audit (prod, high+)
+        run: bun audit --prod --audit-level=high
+
+  trivy-release:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (release tag)
@@ -18,50 +33,26 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
-      - name: Checkout (PR/default)
+      - name: Checkout (default)
         if: github.event_name != 'release'
         uses: actions/checkout@v4
 
-      - name: Setup Bun (repo action)
-        uses: ./.github/actions/setup-bun
-
-      - name: Install workspace deps (Bun)
-        run: bun install --frozen-lockfile || bun install
-
-      - name: Ensure per-package node_modules (symlink to root)
-        run: |
-          set -e
-          root_nm="$(pwd)/node_modules"
-          if [ ! -d "$root_nm" ]; then echo 'No root node_modules after bun install' >&2; exit 1; fi
-          # create a node_modules symlink in every workspace package that lacks one
-          git ls-files -z | tr '\0' '\n' | grep -E '(^|/)package.json$' | while read -r pj; do
-            pkgdir="$(dirname "$pj")"
-            [ "$pkgdir" = ".github/actions/setup-bun" ] && continue
-            if [ ! -d "$pkgdir/node_modules" ]; then
-              echo "linking $pkgdir/node_modules -> $root_nm"
-              ln -s "$root_nm" "$pkgdir/node_modules" || true
-            fi
-          done
-
-      - name: Cache dependency-check data
-        uses: actions/cache@v4
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.34.1
         with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data/
-          key: depcheck-data-${{ runner.os }}-v2
-          restore-keys: |
-            depcheck-data-${{ runner.os }}-
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          vuln-type: library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '1'
 
-      - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@1.1.0
-        with:
-          project: OpenCode
-          path: .
-          format: ALL
-          args: --enableExperimental
-
-      - name: Upload reports
-        if: ${{ env.ACTIONS_RUNTIME_TOKEN != '' }}
+      - name: Upload Trivy report
+        if: ${{ always() && env.ACTIONS_RUNTIME_TOKEN != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: owasp-depcheck-report
-          path: reports/**
+          name: trivy-release-report
+          path: trivy-results.sarif
