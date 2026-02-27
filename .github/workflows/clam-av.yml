@@ -1,0 +1,82 @@
+name: av-clamav
+on:
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  clamav:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the right ref
+      - name: Checkout (release tag)
+        if: github.event_name == 'release'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - name: Checkout (PR/default)
+        if: github.event_name != 'release'
+        uses: actions/checkout@v4
+
+      # Single source-of-truth build -> one file
+      - name: Build and package
+        id: build
+        uses: ./.github/actions/build-package
+
+      # Install fresh ClamAV DB
+      - name: Install & update ClamAV DB
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y clamav clamav-freshclam unzip
+          sudo systemctl stop clamav-freshclam || true
+          sudo mkdir -p /var/lib/clamav
+          sudo chown -R clamav:clamav /var/lib/clamav
+          sudo freshclam --verbose
+          ls -lh /var/lib/clamav
+
+      # Scan extracted bundle so counts reflect actual files
+      - name: Verify ClamAV detects EICAR signature
+        run: |
+          set -euo pipefail
+          printf 'X5O!P%%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > eicar.com
+          status=0
+          clamscan eicar.com > eicar.log || status=$?
+          cat eicar.log
+          if [ "$status" -ne 1 ]; then
+            echo "ClamAV failed to report the EICAR signature" >&2
+            exit 1
+          fi
+          grep -q 'eicar.com: Eicar-Test-Signature FOUND' eicar.log
+          grep -q 'Infected files: 1' eicar.log
+          rm -f eicar.com eicar.log
+
+      - name: Extract bundle and scan
+        run: |
+          set -euo pipefail
+          rm -rf scan && mkdir -p scan
+          unzip -q bundle/opencode.zip -d scan
+          echo "File count in payload: $(find scan -type f | wc -l)"
+          clamscan -ri --scan-archive=yes scan | tee clamav.log
+          if grep -qE 'Infected files: [1-9][0-9]*' clamav.log; then
+            findings=$(grep 'FOUND' clamav.log | grep -v 'Eicar-Test-Signature' || true)
+            if [ -n "${findings}" ]; then
+              echo "Unexpected detections found:" >&2
+              echo "${findings}" >&2
+              exit 1
+            fi
+            echo 'Only EICAR detections observed; continuing.'
+          fi
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: clamav-scan-results
+          path: |
+            clamav.log
+            bundle/opencode.zip
