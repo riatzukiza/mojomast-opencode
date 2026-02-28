@@ -40,6 +40,7 @@ jobs:
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@0.34.1
         with:
+          version: v0.69.1
           scan-type: fs
           scan-ref: .
           scanners: vuln
@@ -48,11 +49,26 @@ jobs:
           ignore-unfixed: true
           format: sarif
           output: trivy-results.sarif
-          exit-code: '1'
+          exit-code: "1"
+
+      - name: Run Trivy misconfig and secret scan
+        uses: aquasecurity/trivy-action@0.34.1
+        with:
+          version: v0.69.1
+          scan-type: fs
+          scan-ref: .
+          scanners: misconfig,secret
+          severity: HIGH,CRITICAL
+          skip-dirs: node_modules,packages/opencode/dist,tree-sitter-scheme
+          format: sarif
+          output: trivy-policy-results.sarif
+          exit-code: "0"
 
       - name: Upload Trivy report
         if: ${{ always() && env.ACTIONS_RUNTIME_TOKEN != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: trivy-release-report
-          path: trivy-results.sarif
+          path: |
+            trivy-results.sarif
+            trivy-policy-results.sarif
