@@ -139,9 +139,21 @@ export namespace ToolRegistry {
     const result = await Promise.all(
       tools
         .filter((t) => {
-          // Enable websearch/codesearch for zen users OR via enable flag
-          if (t.id === "codesearch" || t.id === "websearch") {
+          // codesearch requires Exa (or the opencode provider)
+          if (t.id === "codesearch") {
             return model.providerID === "opencode" || Flag.OPENCODE_ENABLE_EXA
+          }
+
+          // websearch:
+          // - opencode provider OR Exa enabled: Exa-backed
+          // - OpenAI/Azure: OpenAI Responses API built-in web_search (Codex-like)
+          if (t.id === "websearch") {
+            return (
+              model.providerID === "opencode" ||
+              Flag.OPENCODE_ENABLE_EXA ||
+              model.providerID === "openai" ||
+              model.providerID.includes("azure")
+            )
           }
 
           // use apply tool in same format as codex

@@ -1,14 +1,13 @@
-- Search the web using Exa AI - performs real-time web searches and can scrape content from specific URLs
-- Provides up-to-date information for current events and recent data
-- Supports configurable result counts and returns the content from the most relevant websites
-- Use this tool for accessing information beyond knowledge cutoff
-- Searches are performed automatically within a single API call
+- Search the web for up-to-date information beyond the model's knowledge cutoff
+- Backend is selected automatically:
+  - OpenAI/Azure: uses the OpenAI Responses API built-in `web_search` tool (Codex-like)
+  - Otherwise: falls back to Exa (requires Exa enabled in OpenCode)
+- Use this tool for discovery (finding sources and summaries)
+- Pair with `webfetch` when you need to retrieve full content from a specific URL
 
 Usage notes:
-  - Supports live crawling modes: 'fallback' (backup if cached unavailable) or 'preferred' (prioritize live crawling)
-  - Search types: 'auto' (balanced), 'fast' (quick results), 'deep' (comprehensive search)
-  - Configurable context length for optimal LLM integration
-  - Domain filtering and advanced search options available
+  - Prefer including the current year in time-sensitive queries
+  - If you need more comprehensive context, use type="deep" (may be slower/more expensive)
 
 The current year is {{year}}. You MUST use this year when searching for recent information or current events
 - Example: If the current year is 2026 and the user asks for "latest AI news", search for "AI news 2026", NOT "AI news 2025"
