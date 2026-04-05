@@ -79,10 +79,14 @@ export function Sidebar(props: { sessionID: string; overlay?: boolean }) {
         paddingLeft={2}
         paddingRight={2}
         position={props.overlay ? "absolute" : "relative"}
+        flexDirection="column"
       >
         <scrollbox
           flexGrow={1}
+          flexShrink={1}
+          flexBasis={0}
           verticalScrollbarOptions={{
+            visible: true,
             trackOptions: {
               backgroundColor: theme.background,
               foregroundColor: theme.borderActive,
