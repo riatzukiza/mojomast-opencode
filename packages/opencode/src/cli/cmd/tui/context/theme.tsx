@@ -429,7 +429,7 @@ function generateSystem(colors: TerminalColors, mode: "dark" | "light"): ThemeJs
   const bg = RGBA.fromHex(colors.defaultBackground ?? colors.palette[0]!)
   const fg = RGBA.fromHex(colors.defaultForeground ?? colors.palette[7]!)
   const transparent = RGBA.fromInts(0, 0, 0, 0)
-  const isDark = mode == "dark"
+  const isDark = mode === "dark"
 
   const col = (i: number) => {
     const value = colors.palette[i]
@@ -737,6 +737,23 @@ function getSyntaxRules(theme: Theme) {
       },
     },
     {
+      scope: [
+        "function.macro",
+        "keyword.clojure.form",
+        "keyword.clojure.form.call",
+        "keyword.clojure.definition",
+        "keyword.clojure.definition.call",
+        "keyword.commonlisp.form",
+        "keyword.commonlisp.form.call",
+        "keyword.commonlisp.definition",
+        "keyword.commonlisp.definition.call",
+      ],
+      style: {
+        foreground: theme.syntaxKeyword,
+        italic: true,
+      },
+    },
+    {
       scope: ["keyword"],
       style: {
         foreground: theme.syntaxKeyword,
@@ -768,9 +785,44 @@ function getSyntaxRules(theme: Theme) {
       },
     },
     {
+      scope: [
+        "function.call.clojure.default",
+        "variable.parameter.clojure.default",
+        "function.call.commonlisp.default",
+        "variable.parameter.commonlisp.default",
+      ],
+      style: {
+        foreground: theme.text,
+      },
+    },
+    {
       scope: ["variable.member", "function", "constructor"],
       style: {
         foreground: theme.syntaxFunction,
+      },
+    },
+    {
+      scope: ["module.clojure.namespace"],
+      style: {
+        foreground: theme.syntaxType,
+      },
+    },
+    {
+      scope: ["function.commonlisp.definition", "function.commonlisp.generic"],
+      style: {
+        foreground: theme.success,
+      },
+    },
+    {
+      scope: ["type.commonlisp.class", "type.commonlisp.alias", "module.commonlisp.package"],
+      style: {
+        foreground: theme.syntaxType,
+      },
+    },
+    {
+      scope: ["keyword.commonlisp.keyword"],
+      style: {
+        foreground: theme.error,
       },
     },
     {
@@ -973,9 +1025,7 @@ function getSyntaxRules(theme: Theme) {
     },
     {
       scope: ["spell", "nospell"],
-      style: {
-        foreground: theme.text,
-      },
+      style: {},
     },
     {
       scope: ["conceal"],

@@ -1,3 +1,17 @@
+import { fileURLToPath } from "node:url"
+
+const clojure = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-clojure.wasm", import.meta.url))
+const commonlisp = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-commonlisp.wasm", import.meta.url))
+const racket = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-racket.wasm", import.meta.url))
+const scheme = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-scheme.wasm", import.meta.url))
+const elisp = fileURLToPath(new URL("./src/cli/cmd/tui/assets/tree-sitter-elisp.wasm", import.meta.url))
+const clojureHighlightsOverride = fileURLToPath(
+  new URL("./src/cli/cmd/tui/assets/clojure-highlights-override.scm", import.meta.url),
+)
+const commonlispHighlightsOverride = fileURLToPath(
+  new URL("./src/cli/cmd/tui/assets/commonlisp-highlights-override.scm", import.meta.url),
+)
+
 export default {
   // NOTE: FOR markdown, javascript and typescript, we use the opentui built-in parsers
   // Warn: when taking queries from the nvim-treesitter repo, make sure to include the query dependencies as well
@@ -214,11 +228,57 @@ export default {
     },
     {
       filetype: "clojure",
-      // temporarily using fork to fix issues
-      wasm: "https://github.com/anomalyco/tree-sitter-clojure/releases/download/v0.0.1/tree-sitter-clojure.wasm",
+      wasm: clojure,
       queries: {
         highlights: [
           "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/clojure/highlights.scm",
+          clojureHighlightsOverride,
+        ],
+        locals: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/clojure/locals.scm",
+        ],
+      },
+    },
+    {
+      filetype: "commonlisp",
+      wasm: commonlisp,
+      queries: {
+        highlights: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/commonlisp/highlights.scm",
+          commonlispHighlightsOverride,
+        ],
+        locals: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/commonlisp/locals.scm",
+        ],
+      },
+    },
+    {
+      filetype: "racket",
+      wasm: racket,
+      queries: {
+        highlights: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/racket/highlights.scm",
+        ],
+        locals: [
+          "https://raw.githubusercontent.com/6cdh/tree-sitter-racket/56b57807f86aa4ddb14892572b318edd4bc90ebe/queries/locals.scm",
+        ],
+      },
+    },
+    {
+      filetype: "scheme",
+      wasm: scheme,
+      queries: {
+        highlights: [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/refs/heads/master/queries/scheme/highlights.scm",
+        ],
+      },
+    },
+    {
+      filetype: "elisp",
+      wasm: elisp,
+      queries: {
+        highlights: [
+          "https://raw.githubusercontent.com/Wilfred/tree-sitter-elisp/1991465e2722dd36c06e03dc7de6bc5d7da89d51/queries/highlights.scm",
         ],
       },
     },
