@@ -779,6 +779,34 @@ test("cleanup skips gc when loose object count is low", async () => {
   })
 })
 
+test("cleanup compacts loose objects when snapshot churn is high", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const file = `${tmp.path}/churn.txt`
+      for (const i of Array.from({ length: 80 }, (_, i) => i)) {
+        await Filesystem.write(file, `churn-${i}-${Date.now()}`)
+        expect(await Snapshot.track()).toBeTruthy()
+      }
+
+      const git = path.join(Global.Path.data, "snapshot", Instance.project.id)
+      const before = await $`git --git-dir ${git} count-objects -v`.quiet().text()
+      const beforeLoose = parseInt(before.match(/count: (\d+)/)?.[1] ?? "0")
+      expect(beforeLoose).toBeGreaterThanOrEqual(100)
+
+      await Snapshot.cleanup()
+
+      const after = await $`git --git-dir ${git} count-objects -v`.quiet().text()
+      const afterLoose = parseInt(after.match(/count: (\d+)/)?.[1] ?? "0")
+      const afterPacks = parseInt(after.match(/packs: (\d+)/)?.[1] ?? "0")
+      expect(afterLoose).toBeLessThan(beforeLoose)
+      expect(afterLoose).toBeLessThan(100)
+      expect(afterPacks).toBeGreaterThan(0)
+    },
+  })
+})
+
 test("high-contention snapshot churn leaves no git index lock", async () => {
   await using tmp = await bootstrap()
   await Instance.provide({
