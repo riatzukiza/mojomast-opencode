@@ -78,7 +78,7 @@
     "turbo": "2.5.6"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.933.0",
+    "@aws-sdk/client-s3": "3.993.0",
     "@opencode-ai/plugin": "workspace:*",
     "@opencode-ai/script": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
@@ -101,6 +101,7 @@
     "web-tree-sitter"
   ],
   "overrides": {
+    "fast-xml-parser": "5.3.8",
     "@types/bun": "catalog:",
     "@types/node": "catalog:"
   },
