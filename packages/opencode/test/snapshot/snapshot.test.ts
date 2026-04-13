@@ -2,6 +2,21 @@ import { test, expect, mock } from "bun:test"
 import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
+
+mock.module("drizzle-orm/bun-sqlite/migrator", () => ({
+  migrate: (db: any, entries: any) => {
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        const statements = entry.sql.split("--> statement-breakpoint")
+        for (const stmt of statements) {
+          if (stmt.trim()) db.run(stmt)
+        }
+      }
+    }
+  },
+  readMigrationFiles: () => [],
+}))
+
 import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
 import { Filesystem } from "../../src/util/filesystem"
