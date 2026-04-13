@@ -8,11 +8,14 @@ import z from "zod"
 import { Config } from "../config/config"
 import { Instance } from "../project/instance"
 import { Scheduler } from "../scheduler"
+import { git as runGit } from "../util/git"
 
 export namespace Snapshot {
   const log = Log.create({ service: "snapshot" })
   const hour = 60 * 60 * 1000
   const prune = "7.days"
+  const treehash = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/
+  const retry = [0, 25, 100]
   type Gate = {
     held: boolean
     wait: (() => void)[]
@@ -134,14 +137,12 @@ export namespace Snapshot {
       await $`git --git-dir ${git} config core.fsmonitor false`.quiet().nothrow()
       log.info("initialized")
     }
-    await add(git)
-    const hash = await $`git --git-dir ${git} --work-tree ${Instance.worktree} write-tree`
-      .quiet()
-      .cwd(Instance.directory)
-      .nothrow()
-      .text()
-    log.info("tracking", { hash, cwd: Instance.directory, git })
-    return hash.trim()
+    const staged = await add(git)
+    if (!staged) return
+    const tree = await write(git)
+    if (!tree) return
+    log.info("tracking", { hash: tree, cwd: Instance.directory, git })
+    return tree
   }
 
   export const Patch = z.object({
@@ -153,7 +154,8 @@ export namespace Snapshot {
   export async function patch(hash: string): Promise<Patch> {
     const git = gitdir()
     using _ = await lock(git)
-    await add(git)
+    const staged = await add(git)
+    if (!staged) return { hash, files: [] }
     const result =
       await $`git -c core.autocrlf=false -c core.longpaths=true -c core.symlinks=true -c core.quotepath=false --git-dir ${git} --work-tree ${Instance.worktree} diff --no-ext-diff --name-only ${hash} -- .`
         .quiet()
@@ -235,7 +237,8 @@ export namespace Snapshot {
   export async function diff(hash: string) {
     const git = gitdir()
     using _ = await lock(git)
-    await add(git)
+    const staged = await add(git)
+    if (!staged) return ""
     const result =
       await $`git -c core.autocrlf=false -c core.longpaths=true -c core.symlinks=true -c core.quotepath=false --git-dir ${git} --work-tree ${Instance.worktree} diff --no-ext-diff ${hash} -- .`
         .quiet()
@@ -330,10 +333,101 @@ export namespace Snapshot {
 
   async function add(git: string) {
     await syncExclude(git)
-    await $`git -c core.autocrlf=false -c core.longpaths=true -c core.symlinks=true --git-dir ${git} --work-tree ${Instance.worktree} add .`
-      .quiet()
-      .cwd(Instance.directory)
-      .nothrow()
+    const result = await command({
+      args: [
+        "-c",
+        "core.autocrlf=false",
+        "-c",
+        "core.longpaths=true",
+        "-c",
+        "core.symlinks=true",
+        "--git-dir",
+        git,
+        "--work-tree",
+        Instance.worktree,
+        "add",
+        ".",
+      ],
+      cwd: Instance.directory,
+      retryLock: true,
+    })
+    if (result.exitCode === 0) return true
+    log.warn("git add failed", {
+      git,
+      cwd: Instance.directory,
+      exitCode: result.exitCode,
+      stderr: result.stderr,
+      stdout: result.stdout,
+    })
+    return false
+  }
+
+  async function write(git: string) {
+    const result = await command({
+      args: ["--git-dir", git, "--work-tree", Instance.worktree, "write-tree"],
+      cwd: Instance.directory,
+      retryLock: true,
+    })
+    if (result.exitCode !== 0) {
+      log.warn("write-tree failed", {
+        git,
+        cwd: Instance.directory,
+        exitCode: result.exitCode,
+        stderr: result.stderr,
+        stdout: result.stdout,
+      })
+      return
+    }
+    if (!treehash.test(result.text)) {
+      log.warn("write-tree returned invalid hash", {
+        git,
+        cwd: Instance.directory,
+        hash: result.text,
+      })
+      return
+    }
+    return result.text
+  }
+
+  function output(input: Buffer | ReadableStream<Uint8Array>) {
+    if (Buffer.isBuffer(input)) return input.toString()
+    return ""
+  }
+
+  function conflict(input: string) {
+    const text = input.toLowerCase()
+    if (text.includes("index.lock")) return true
+    if (text.includes("another git process seems to be running")) return true
+    return false
+  }
+
+  async function command(input: {
+    args: string[]
+    cwd: string
+    retryLock?: boolean
+  }) {
+    let last = {
+      exitCode: 1,
+      stderr: "",
+      stdout: "",
+      text: "",
+    }
+    for (const ms of retry) {
+      if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
+      const result = await runGit(input.args, { cwd: input.cwd })
+      const stdout = (await result.text()).trim()
+      const stderr = output(result.stderr)
+      last = {
+        exitCode: result.exitCode,
+        stderr,
+        stdout,
+        text: stdout,
+      }
+      if (last.exitCode === 0) return last
+      if (!input.retryLock) return last
+      if (!conflict(`${stderr}\n${stdout}`)) return last
+    }
+    return last
   }
 
   async function syncExclude(git: string) {
