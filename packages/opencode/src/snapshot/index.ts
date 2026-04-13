@@ -84,11 +84,6 @@ export namespace Snapshot {
     const permit = tryLock(git)
     if (!permit) {
       log.info("cleanup skipped", { git, reason: "busy" })
-      // Retry up to 3 times with jittered backoff if blocked
-      const backoff = Math.floor(Math.random() * 500) + 100
-      setTimeout(() => {
-        void cleanup()
-      }, backoff)
       return
     }
     using _ = permit
