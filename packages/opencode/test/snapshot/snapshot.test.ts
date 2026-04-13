@@ -1,10 +1,26 @@
-import { test, expect } from "bun:test"
+import { test, expect, mock } from "bun:test"
 import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
+
+mock.module("drizzle-orm/bun-sqlite/migrator", () => ({
+  migrate: (db: any, entries: any) => {
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        const statements = entry.sql.split("--> statement-breakpoint")
+        for (const stmt of statements) {
+          if (stmt.trim()) db.run(stmt)
+        }
+      }
+    }
+  },
+  readMigrationFiles: () => [],
+}))
+
 import { Snapshot } from "../../src/snapshot"
 import { Instance } from "../../src/project/instance"
 import { Filesystem } from "../../src/util/filesystem"
+import { Global } from "../../src/global"
 import { tmpdir } from "../fixture/fixture"
 
 // Git always outputs /-separated paths internally. Snapshot.patch() joins them
@@ -601,6 +617,66 @@ test("concurrent file operations during patch", async () => {
 
       // Should capture some or all of the concurrent files
       expect(patch.files.length).toBeGreaterThanOrEqual(0)
+    },
+  })
+})
+
+test("concurrent snapshot operations do not leave git index lock", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const before = await Snapshot.track()
+      expect(before).toBeTruthy()
+
+      await Promise.all(
+        Array.from({ length: 24 }, (_, i) => Filesystem.write(`${tmp.path}/parallel-${i}.txt`, `parallel-${i}`)),
+      )
+
+      await Promise.all([
+        ...Array.from({ length: 8 }, () => Snapshot.track()),
+        ...Array.from({ length: 8 }, () => Snapshot.patch(before!)),
+        ...Array.from({ length: 8 }, () => Snapshot.diff(before!)),
+      ])
+
+      const lock = await fs
+        .access(path.join(Global.Path.data, "snapshot", Instance.project.id, "index.lock"))
+        .then(() => true)
+        .catch(() => false)
+      expect(lock).toBe(false)
+    },
+  })
+})
+
+test("cleanup returns immediately when snapshot repo is busy", async () => {
+  await using tmp = await bootstrap()
+  await Instance.provide({
+    directory: tmp.path,
+    fn: async () => {
+      const before = await Snapshot.track()
+      expect(before).toBeTruthy()
+
+      const busyFiles = Array.from({ length: 160 }, (_, i) => `${tmp.path}/busy-${i}.txt`)
+      const revertPromise = Snapshot.revert([
+        {
+          hash: before!,
+          files: busyFiles,
+        },
+      ])
+
+      const cleanupResult = await Promise.race([
+        Snapshot.cleanup().then(() => "cleanup" as const),
+        new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 1000)),
+      ])
+      expect(cleanupResult).toBe("cleanup")
+
+      const stillRunning = await Promise.race([
+        revertPromise.then(() => false),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 30)),
+      ])
+      expect(stillRunning).toBe(true)
+
+      await revertPromise
     },
   })
 })
