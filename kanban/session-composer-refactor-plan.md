@@ -1,3 +1,17 @@
+---
+uuid: "orgs-ussyverse-opencode-kanban-orgs-ussyverse-opencode-specs-session-composer-refactor-plan-md"
+title: "Session Composer Refactor Plan"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:26.966Z"
+source: "orgs/ussyverse/opencode/specs/session-composer-refactor-plan.md"
+category: "specs"
+---
+
+> Source: `orgs/ussyverse/opencode/specs/session-composer-refactor-plan.md`
+> Migrated-to-kanban: `orgs/ussyverse/opencode/kanban/session-composer-refactor-plan.md`
+
 # Session Composer Refactor Plan
 
 ## Goal

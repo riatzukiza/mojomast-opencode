@@ -1,3 +1,17 @@
+---
+uuid: "orgs-ussyverse-opencode-kanban-orgs-ussyverse-opencode-specs-project-md"
+title: "Project"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:26.967Z"
+source: "orgs/ussyverse/opencode/specs/project.md"
+category: "specs"
+---
+
+> Source: `orgs/ussyverse/opencode/specs/project.md`
+> Migrated-to-kanban: `orgs/ussyverse/opencode/kanban/project.md`
+
 ## project
 
 The goal is to let a single instance of OpenCode run sessions for multiple projects and different worktrees per project.
