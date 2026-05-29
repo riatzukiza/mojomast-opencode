@@ -1,3 +1,17 @@
+---
+uuid: "orgs-shuv-shuvcode-kanban-orgs-shuv-shuvcode-specs-project-md"
+title: "Project"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:28.847Z"
+source: "orgs/shuv/shuvcode/specs/project.md"
+category: "specs"
+---
+
+> Source: `orgs/shuv/shuvcode/specs/project.md`
+> Migrated-to-kanban: `orgs/shuv/shuvcode/kanban/project.md`
+
 ## project
 
 The goal is to let a single instance of OpenCode run sessions for multiple projects and different worktrees per project.

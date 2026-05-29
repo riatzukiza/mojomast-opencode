@@ -1,3 +1,17 @@
+---
+uuid: "orgs-shuv-shuvcode-packages-opencode-kanban-orgs-shuv-shuvcode-packages-opencode-specs-effect-migration-md"
+title: "Effect patterns"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:26.806Z"
+source: "orgs/shuv/shuvcode/packages/opencode/specs/effect-migration.md"
+category: "specs"
+---
+
+> Source: `orgs/shuv/shuvcode/packages/opencode/specs/effect-migration.md`
+> Migrated-to-kanban: `orgs/shuv/shuvcode/packages/opencode/kanban/effect-migration.md`
+
 # Effect patterns
 
 Practical reference for new and migrated Effect code in `packages/opencode`.

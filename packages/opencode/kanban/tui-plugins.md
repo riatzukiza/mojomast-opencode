@@ -1,3 +1,17 @@
+---
+uuid: "orgs-shuv-shuvcode-packages-opencode-kanban-orgs-shuv-shuvcode-packages-opencode-specs-tui-plugins-md"
+title: "TUI plugins"
+status: incoming
+priority: P3
+labels: ["specs", "migrated-spec"]
+created_at: "2026-05-29T04:01:26.822Z"
+source: "orgs/shuv/shuvcode/packages/opencode/specs/tui-plugins.md"
+category: "specs"
+---
+
+> Source: `orgs/shuv/shuvcode/packages/opencode/specs/tui-plugins.md`
+> Migrated-to-kanban: `orgs/shuv/shuvcode/packages/opencode/kanban/tui-plugins.md`
+
 # TUI plugins
 
 Technical reference for the current TUI plugin system.
